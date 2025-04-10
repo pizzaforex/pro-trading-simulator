@@ -5,35 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pro Trading Simulator - Terminal</title>
     <link rel="stylesheet" href="css/style.css">
-    <!-- Favicon -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📈</text></svg>">
-
-    <!-- Nessuno script di rilevamento qui -->
-    <!-- Nessuno stile CSS per fallback qui -->
-
 </head>
-<body class="theme-dark"> <!-- Default theme -->
+<body class="theme-dark"> <!-- Default theme, JS applicherà quella salvata -->
 
-    <!-- Messaggio Fallback RIMOSSO -->
-    <!-- <div id="no-module-fallback" class="no-module-support"> ... </div> -->
-
-    <!-- Contenitore Principale Applicazione - Ora visibile di default -->
+    <!-- Contenitore Principale Applicazione -->
     <div class="container" id="app-container">
          <header class="main-header">
             <h1>Pro Trading Simulator</h1>
-            <!-- Barra Controlli (Asset, Timeframe, Tema) -->
             <div class="controls-bar">
                  <div class="control-group">
                     <label for="assetSelect">Asset:</label>
-                    <select id="assetSelect" aria-label="Seleziona Asset">
-                        <!-- Options populated by JS -->
-                    </select>
+                    <select id="assetSelect" aria-label="Seleziona Asset"></select>
                  </div>
                  <div class="control-group">
                     <label for="timeframeSelect">Timeframe:</label>
-                    <select id="timeframeSelect" aria-label="Seleziona Timeframe">
-                         <!-- Options populated by JS -->
-                    </select>
+                    <select id="timeframeSelect" aria-label="Seleziona Timeframe"></select>
                  </div>
                  <div class="control-group">
                     <button id="themeToggleBtn" title="Cambia Tema Chiaro/Scuro" aria-label="Cambia tema chiaro/scuro">☀️</button>
@@ -41,7 +28,6 @@
             </div>
         </header>
 
-        <!-- Barra Statistiche -->
         <div class="stats-bar" role="region" aria-label="Statistiche Principali">
             <div class="stat-item"><span class="stat-label">Capitale</span><span class="stat-value" id="capitalDisplay">--</span></div>
             <div class="stat-item"><span class="stat-label">Equity</span><span class="stat-value" id="equityDisplay">--</span></div>
@@ -54,42 +40,48 @@
              <div class="stat-item"><span class="stat-label">ATR (14)</span><span class="stat-value" id="atrDisplay">--</span></div>
         </div>
 
-        <!-- Layout Principale (Grafico + Pannello Laterale) -->
         <main class="main-layout">
-            <!-- Sezione Grafico -->
             <section class="chart-section panel" aria-labelledby="chart-heading">
                  <h2 id="chart-heading" class="visually-hidden">Grafico Principale</h2>
-                <div id="chartContainer">
-                    <div id="chartInfoOverlay" class="chart-info-overlay" aria-live="polite">-- / --</div>
-                </div>
-                <!-- Area Feedback -->
-                <div class="feedback-area" id="feedback-area" role="log" aria-live="polite">
-                    <span id="feedback-text">Inizializzazione...</span>
-                </div>
+                <div id="chartContainer"><div id="chartInfoOverlay" class="chart-info-overlay" aria-live="polite">-- / --</div></div>
+                <div class="feedback-area" id="feedback-area" role="log" aria-live="polite"><span id="feedback-text">Inizializzazione...</span></div>
             </section>
 
-            <!-- Pannello Laterale -->
             <aside class="side-panel">
-                <!-- Pannello Controlli Ordine -->
                 <section class="panel control-panel" aria-labelledby="order-heading">
                     <h3 id="order-heading">Nuovo Ordine</h3>
+                     <!-- Gruppo Rischio -->
                      <div class="input-group risk-method-group">
-                         <span class="label-like">Rischio:</span>
-                         <div class="radio-group">
-                            <input type="radio" id="riskMethodPips" name="riskMethod" value="pips" checked> <label for="riskMethodPips">Pips</label>
-                            <input type="radio" id="riskMethodAtr" name="riskMethod" value="atr"> <label for="riskMethodAtr">ATR</label>
+                         <label id="riskMethodLabel">Rischio:</label> <!-- Usa label standard -->
+                         <div class="radio-group" role="radiogroup" aria-labelledby="riskMethodLabel">
+                            <input type="radio" id="riskMethodPips" name="riskMethod" value="pips" checked>
+                            <label for="riskMethodPips">Pips</label> <!-- Label associata con 'for' -->
+                            <input type="radio" id="riskMethodAtr" name="riskMethod" value="atr">
+                            <label for="riskMethodAtr">ATR</label> <!-- Label associata con 'for' -->
                          </div>
                      </div>
+                     <!-- Gruppo Size -->
                     <div class="input-group"><label for="sizeInput">Size:</label><input type="number" id="sizeInput" value="10000" min="1000" step="1000" aria-label="Size Operazione"></div>
+                    <!-- Gruppo SL Pips -->
                     <div class="input-group" id="slPipsGroup"><label for="slPipsInput">SL (Pips):</label><input type="number" id="slPipsInput" value="15" min="1" step="1" aria-label="Stop Loss Pips"></div>
+                    <!-- Gruppo SL ATR -->
                     <div class="input-group" id="slAtrGroup" style="display: none;"><label for="slAtrMultiInput">SL (ATR x):</label><input type="number" id="slAtrMultiInput" value="1.5" min="0.1" step="0.1" aria-label="Moltiplicatore ATR Stop Loss"></div>
+                     <!-- Gruppo TP Pips -->
                     <div class="input-group" id="tpPipsGroup"><label for="tpPipsInput">TP (Pips):</label><input type="number" id="tpPipsInput" value="30" min="1" step="1" aria-label="Take Profit Pips"></div>
+                     <!-- Gruppo TP ATR -->
                     <div class="input-group" id="tpAtrGroup" style="display: none;"><label for="tpAtrMultiInput">TP (ATR x):</label><input type="number" id="tpAtrMultiInput" value="3.0" min="0.1" step="0.1" aria-label="Moltiplicatore ATR Take Profit"></div>
+                    <!-- Gruppo Rischio Stimato -->
                     <div class="input-group"><label>Rischio:</label><span id="estimatedRiskDisplay" aria-live="polite">Calc...</span></div>
+                    <!-- Gruppo Toggle ATR (NUOVO) -->
+                    <div class="input-group atr-toggle-group">
+                        <label for="atrVisibleToggle">Mostra ATR Grafico:</label>
+                        <input type="checkbox" id="atrVisibleToggle" checked aria-label="Mostra o nascondi indicatore ATR">
+                    </div>
+                    <!-- Gruppo Bottoni -->
                     <div class="button-group"><button id="btnBuy" class="buy">BUY</button><button id="btnSell" class="sell">SELL</button></div>
                 </section>
 
-                <!-- Pannello Posizioni Aperte -->
+                 <!-- Pannello Posizioni Aperte -->
                 <section class="panel positions-panel" aria-labelledby="positions-heading">
                     <h3 id="positions-heading">Posizioni Aperte (<span id="openPositionsCount">0</span>)</h3>
                     <div class="table-container">
@@ -110,7 +102,7 @@
                     </div>
                 </section>
 
-                <!-- Pannello Storico -->
+                 <!-- Pannello Storico -->
                 <section class="panel history-panel" aria-labelledby="history-heading">
                     <h3 id="history-heading">Storico</h3>
                     <div class="table-container">
@@ -121,17 +113,12 @@
                     </div>
                      <button id="clearHistoryBtn" class="clear-btn" title="Cancella Storico Operazioni">Cancella Storico</button>
                 </section>
-            </aside> <!-- Fine Pannello Laterale -->
-        </main> <!-- Fine Layout Principale -->
-    </div> <!-- Fine Contenitore App -->
+            </aside>
+        </main>
+    </div>
 
-    <!-- Caricamento Libreria e Moduli JS -->
-    <!-- Assicurati che il percorso sia corretto rispetto a index.html -->
     <script src="js/vendor/lightweight-charts.standalone.production.js"></script>
-    <script type="module" src="js/main.js"></script> <!-- Entry Point -->
-
-    <!-- Script Finale per Visualizzazione Fallback/App RIMOSSO -->
-    <!-- Lo script che mostra/nasconde non serve più -->
+    <script type="module" src="js/main.js"></script>
 
 </body>
 </html>
