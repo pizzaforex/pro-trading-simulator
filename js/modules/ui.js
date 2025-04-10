@@ -54,10 +54,10 @@ export function initialize() {
     applyTheme(simState.selectedTheme);
     ui.assetSelect.value = simState.selectedAsset;
     ui.timeframeSelect.value = simState.selectedTimeframe;
-    const riskRadio = document.querySelector(`input[name="modalRiskMethod"][value="${simState.selectedRiskMethod}"]`); // Usa radio del modale
+    const riskRadio = document.querySelector(`input[name="modalRiskMethod"][value="${simState.selectedRiskMethod}"]`);
     if (riskRadio) riskRadio.checked = true;
     updateRiskInputVisibility(simState.selectedRiskMethod); // Usa la funzione unica corretta
-    updateModalInputDefaults(); // Imposta defaults nel modale
+    updateModalInputDefaults();
     if (ui.atrVisibleToggle) ui.atrVisibleToggle.checked = simState.isAtrVisible;
     if (ui.smaToggle) ui.smaToggle.checked = simState.isSmaVisible;
     updateCalculatedUnits(ui.modalVolumeInput, ui.modalCalculatedUnitsDisplay);
@@ -84,10 +84,9 @@ function updateModalInputDefaults() {
     ui.modalTpAtrMultiInput.min = CONFIG.MIN_ATR_TP_MULTIPLE; ui.modalTpAtrMultiInput.value = 3.0;
 }
 
-/** Recalculates and displays units in the modal based on volume input. */
+/** Recalculates and displays units in the modal based on volume input. Also triggers risk update. */
 function updateCalculatedUnits(volumeInput, displayElement) {
     if(!volumeInput||!displayElement)return; const vol=parseFloat(volumeInput.value); const assetConf=getCurrentAssetConfig(); if(!isNaN(vol)&&vol>0&&assetConf){ const units=vol*assetConf.lotUnitSize; displayElement.textContent=units.toLocaleString(undefined,{maximumFractionDigits:2}); } else{displayElement.textContent='--';}
-    // Update risk display using dynamic import or ensure RiskModule is loaded
     import('./risk.js').then(RiskModule => RiskModule.updateEstimatedRiskDisplay(true)).catch(console.error); // Update modal risk
 }
 
@@ -99,7 +98,7 @@ function addEventListeners() {
     ui.themeToggleBtn?.addEventListener('click', toggleTheme);
     ui.assetSelect?.addEventListener('change', handleSettingChangeTrigger);
     ui.timeframeSelect?.addEventListener('change', handleSettingChangeTrigger);
-    document.querySelectorAll('input[name="modalRiskMethod"]').forEach(r=>r.addEventListener('change', handleModalRiskMethodChange)); // Listener radio nel modale
+    document.querySelectorAll('input[name="modalRiskMethod"]').forEach(r=>r.addEventListener('change', handleModalRiskMethodChange));
     ui.atrVisibleToggle?.addEventListener('change', handleAtrVisibilityChange);
     ui.smaToggle?.addEventListener('change', handleSmaVisibilityChange);
     // Modal listeners
@@ -107,7 +106,7 @@ function addEventListeners() {
     ui.triggerBtnSell?.addEventListener('click', () => openOrderModal('SELL'));
     ui.closeOrderModalBtn?.addEventListener('click', closeOrderModal);
     ui.cancelOrderBtn?.addEventListener('click', closeOrderModal);
-    ui.executeOrderBtn?.addEventListener('click', handleExecuteOrder);
+    ui.executeOrderBtn?.addEventListener('click', handleExecuteOrder); // CORRETTO
     ui.orderModal?.addEventListener('click', (e)=>{if(e.target===ui.orderModal)closeOrderModal();});
     // Modal inputs trigger updates
     const modalRiskInputs = [ui.modalVolumeInput, ui.modalSlPipsInput, ui.modalSlAtrMultiInput];
@@ -129,16 +128,16 @@ function toggleTheme() {
 function applyTheme(theme) {
     document.body.className = `theme-${theme}`; if(ui.themeToggleBtn) ui.themeToggleBtn.textContent = theme==='dark'?'☀️':'🌙'; simState.selectedTheme = theme;
 }
-/** Handles Asset/Timeframe changes, updates defaults, triggers global event. */
+/** Handles Asset/Timeframe dropdown changes, updates defaults, triggers global event. */
 function handleSettingChangeTrigger() {
     const newAsset=ui.assetSelect.value; const newTimeframe=ui.timeframeSelect.value; const oldAsset=simState.selectedAsset; const oldTimeframe=simState.selectedTimeframe;
     simState.selectedAsset=newAsset; simState.selectedTimeframe=newTimeframe; saveSettings();
-    if(newAsset!==oldAsset||newTimeframe!==oldTimeframe){ updateModalInputDefaults(); window.dispatchEvent(new CustomEvent('settingsChanged')); } // Update modal defaults too
+    if(newAsset!==oldAsset||newTimeframe!==oldTimeframe){ updateModalInputDefaults(); window.dispatchEvent(new CustomEvent('settingsChanged')); }
 }
 /** Handles Risk Method changes *within the modal*. */
 async function handleModalRiskMethodChange(event) {
     const newMethod = event.target.value; simState.selectedRiskMethod = newMethod; updateRiskInputVisibility(newMethod); // Aggiorna UI modale
-    try{const R=await import('./risk.js'); R.updateEstimatedRiskDisplay(true);} catch(e){console.error(e);} saveSettings(); // Salva preferenza
+    try{const R=await import('./risk.js'); R.updateEstimatedRiskDisplay(true);}catch(e){console.error(e);} saveSettings();
 }
 /** Handles ATR visibility toggle. */
 async function handleAtrVisibilityChange(event) {
@@ -166,25 +165,35 @@ function closeOrderModal() {
 }
 /** Handles the execution button click in the modal. */
 async function handleExecuteOrder() {
-    const inputs = getModalRiskInputs(); // Usa la funzione esportata
-    try { const Trading=await import('./trading.js'); const success=await Trading.openPositionFromModal(simState.orderModalType, inputs.volume, inputs.method, inputs.slValue, inputs.tpValue); if(success)closeOrderModal(); }
-    catch(error){ console.error("Err execute order:", error); showFeedback("Errore esecuzione ordine.", "error"); }
+    // Non serve recuperare gli input qui, li recupera openPosition
+    try {
+        const TradingModule = await import('./trading.js');
+        // Chiama la funzione openPosition corretta, passando solo il tipo
+        await TradingModule.openPosition(simState.orderModalType);
+        // Se openPosition NON lancia un errore (cioè va a buon fine o mostra solo feedback 'warn'), chiudi il modale
+        closeOrderModal();
+    } catch (error) {
+        // Questo catch intercetta errori *imprevisti* durante l'import o l'esecuzione di openPosition
+        console.error("Unexpected error during order execution:", error);
+        showFeedback("Errore imprevisto esecuzione ordine.", "error");
+        // Non chiudere il modale in caso di errore imprevisto
+    }
 }
 
-// --- UI Update Functions ---
+// --- Funzioni di Aggiornamento UI ---
 export function showFeedback(message, type = 'info') { /* ... come prima ... */
     if(!ui['feedback-text']||!ui['feedback-area']){console.warn("Feedback UI missing:",message);return;} ui['feedback-text'].textContent=message; ui['feedback-area'].className='feedback-area'; if(type!=='info'){ui['feedback-area'].classList.add(`feedback-${type}`);} ui['feedback-area'].setAttribute('role',type==='error'||type==='warn'?'alert':'log');
 }
 export function updateStatsBar() { /* ... come prima ... */
     if(!simState.isInitialized) return; const aConf=getCurrentAssetConfig(); ui.capitalDisplay.textContent=Utils.formatCurrency(simState.capital); ui.equityDisplay.textContent=Utils.formatCurrency(simState.equity); ui.totalClosedPnlDisplay.textContent=Utils.formatCurrency(simState.totalClosedPnl); ui.totalClosedPnlDisplay.className=`stat-value ${simState.totalClosedPnl>=0?'pnl-profit':'pnl-loss'}`; ui.disciplineDisplay.textContent=simState.discipline; ui.priceDisplay.textContent=simState.lastBar?Utils.formatPrice(simState.lastBar.close,simState.selectedAsset):'--'; const atrDispVal=!isNaN(simState.currentATR)?(simState.currentATR*aConf.atrDisplayMultiplier).toFixed(aConf.pricePrecision>2?1:2):'--'; ui.atrDisplay.textContent=atrDispVal;
 }
-export function updatePositionsTable() { /* ... come prima (con 12 colonne) ... */
+export function updatePositionsTable() { /* ... come prima ... */
     if (!ui.openPositionsTableBody) return; const tbody = ui.openPositionsTableBody; const scrollPos = tbody.parentElement.scrollTop; tbody.innerHTML = ''; ui.openPositionsCount.textContent = simState.openPositions.length;
-    if (simState.openPositions.length === 0) { tbody.innerHTML = `<tr class="no-rows-message"><td colspan="12">Nessuna posizione aperta</td></tr>`; } // Colspan 12
+    if (simState.openPositions.length === 0) { tbody.innerHTML = `<tr class="no-rows-message"><td colspan="12">Nessuna posizione aperta</td></tr>`; }
     else { simState.openPositions.forEach(pos => { const row = tbody.insertRow(); row.dataset.positionId = pos.id; const pnlClass = pos.livePnl>=0?'pnl-profit':'pnl-loss'; const assetConf = CONFIG.ASSETS[pos.asset]||getCurrentAssetConfig(); const currentPrice = simState.lastBar?Utils.formatPrice(simState.lastBar.close, pos.asset):'--'; const volumeLots = pos.size / assetConf.lotUnitSize; row.innerHTML = `<td>${pos.id}</td><td>${Utils.formatTimestamp(pos.entryTime)}</td><td>${pos.type}</td><td>${Utils.formatVolume(volumeLots, pos.asset)}</td><td>${assetConf.name}</td><td>${Utils.formatPrice(pos.entryPrice,pos.asset)}</td><td>${Utils.formatPrice(pos.stopLoss,pos.asset)}</td><td>${Utils.formatPrice(pos.takeProfit,pos.asset)}</td><td>${currentPrice}</td><td class="live-pnl ${pnlClass}">${Utils.formatCurrency(pos.livePnl)}</td><td><button class="modify modify-pos-btn" data-pos-id="${pos.id}" title="Modifica SL/TP ${pos.id}" ${!simState.isRunning?'disabled':''}>✏️</button></td><td><button class="close close-pos-btn" data-pos-id="${pos.id}" title="Chiudi Posizione ${pos.id}" ${!simState.isRunning?'disabled':''}>X</button></td>`; }); }
     tbody.parentElement.scrollTop = scrollPos;
 }
-export function updateHistoryTable() { /* ... come prima (con 8 colonne) ... */
+export function updateHistoryTable() { /* ... come prima ... */
     if(!ui.historyTableBody)return; const tbody=ui.historyTableBody; const scrollPos=tbody.parentElement.scrollTop; tbody.innerHTML=''; if(simState.closedTrades.length===0){tbody.innerHTML=`<tr class="no-rows-message"><td colspan="8">Nessuna operazione chiusa</td></tr>`;} else{[...simState.closedTrades].reverse().forEach(trade=>{const row=tbody.insertRow(); const pnlCls=trade.pnl>=0?'pnl-profit':'pnl-loss'; const assetConf=CONFIG.ASSETS[trade.asset]||getCurrentAssetConfig(); const volLots=trade.size/assetConf.lotUnitSize; row.innerHTML=`<td>${trade.id}</td><td>${trade.type}</td><td>${Utils.formatVolume(volLots,trade.asset)}</td><td>${assetConf.name}</td><td>${Utils.formatPrice(trade.entryPrice,trade.asset)}</td><td>${Utils.formatPrice(trade.exitPrice,trade.asset)}</td><td class="${pnlCls}">${Utils.formatCurrency(trade.pnl)}</td><td>${trade.closeReason.toUpperCase()}</td>`;});} tbody.parentElement.scrollTop=scrollPos;
 }
 export function updateLivePnlInTable(positionId, pnl) { /* ... come prima ... */
@@ -193,8 +202,9 @@ export function updateLivePnlInTable(positionId, pnl) { /* ... come prima ... */
 export function updateTotalLivePnl(totalPnl) { /* ... come prima ... */
     if(ui.totalLivePnlDisplay){ ui.totalLivePnlDisplay.textContent=Utils.formatCurrency(totalPnl); ui.totalLivePnlDisplay.className=`stat-value ${totalPnl>=0?'profit':'loss'}`; }
 }
+/** Aggiorna stima rischio nel MODALE o pannello principale. */
 export function updateEstimatedRisk(riskAmount, riskPercent, isModal = false) { // Modificato
-    const displayElement = isModal ? ui.modalEstimatedRiskDisplay : null; // Usa solo modale per ora
+    const displayElement = isModal ? ui.modalEstimatedRiskDisplay : null; // Aggiorna solo modale
     if(!displayElement) return; if(isNaN(riskAmount)||isNaN(riskPercent)){ displayElement.textContent='Input N/V'; displayElement.className=''; return; } displayElement.textContent=`${Utils.formatCurrency(riskAmount)} (${Utils.formatPercent(riskPercent)})`; displayElement.classList.toggle('risk-high', riskPercent > CONFIG.MAX_RISK_PERCENT_PER_TRADE);
 }
 export function updateDashboardDisplays(stats) { /* ... come prima ... */
@@ -203,18 +213,20 @@ export function updateDashboardDisplays(stats) { /* ... come prima ... */
 export function updateChartInfoOverlay() { /* ... come prima ... */
     if(ui.chartInfoOverlay){ const aConf=getCurrentAssetConfig(); const tConf=CONFIG.TIMEFRAMES[simState.selectedTimeframe]||{label:simState.selectedTimeframe}; ui.chartInfoOverlay.textContent=`${aConf.name} - ${tConf.label}`; }
 }
-/** Aggiorna visibilità input NEL MODALE. Esportata per essere chiamata da altri moduli se necessario. */
+/** Aggiorna visibilità input rischio NEL MODALE. */
 export function updateRiskInputVisibility(selectedMethod) { // Rinomitata e Esportata
    const showPips = selectedMethod === 'pips';
+   // Assicurati che gli elementi esistano prima di accedere a style
    if(ui.modalSlPipsGroup) ui.modalSlPipsGroup.style.display = showPips ? 'flex' : 'none';
    if(ui.modalTpPipsGroup) ui.modalTpPipsGroup.style.display = showPips ? 'flex' : 'none';
    if(ui.modalSlAtrGroup) ui.modalSlAtrGroup.style.display = !showPips ? 'flex' : 'none';
    if(ui.modalTpAtrGroup) ui.modalTpAtrGroup.style.display = !showPips ? 'flex' : 'none';
 }
+/** Abilita/disabilita controlli principali UI. */
 export function setControlsEnabled(enabled) { /* ... come prima ... */
     ui.assetSelect?.toggleAttribute('disabled',!enabled); ui.timeframeSelect?.toggleAttribute('disabled',!enabled); ui.triggerBtnBuy?.toggleAttribute('disabled',!enabled); ui.triggerBtnSell?.toggleAttribute('disabled',!enabled); ui.clearHistoryBtn?.toggleAttribute('disabled',!enabled); ui.downloadHistoryBtn?.toggleAttribute('disabled',!enabled); ui.atrVisibleToggle?.toggleAttribute('disabled',!enabled); ui.smaToggle?.toggleAttribute('disabled',!enabled); const tableBtns = ui.openPositionsTableBody?.querySelectorAll('button'); tableBtns?.forEach(b=>b.disabled=!simState.isRunning); ui.executeOrderBtn?.toggleAttribute('disabled', !enabled);
 }
 /** Esporta funzione per ottenere valori dal MODALE. */
-export function getModalRiskInputs() { /* ... codice come prima ... */
+export function getModalRiskInputs() { /* ... come prima ... */
    const method=document.querySelector('input[name="modalRiskMethod"]:checked')?.value||'pips'; let slVal=NaN, tpVal=NaN; try{ if(method==='atr'){slVal=parseFloat(ui.modalSlAtrMultiInput.value); tpVal=parseFloat(ui.modalTpAtrMultiInput.value);} else {slVal=parseFloat(ui.modalSlPipsInput.value); tpVal=parseFloat(ui.modalTpPipsInput.value);}}catch(e){} let volLots=NaN, sizeUnits=NaN; const assetConf=getCurrentAssetConfig(); try{volLots=parseFloat(ui.modalVolumeInput.value); if(!isNaN(volLots)&&assetConf){sizeUnits=volLots*assetConf.lotUnitSize;}}catch(e){} return {method, size:sizeUnits, slValue:slVal, tpValue:tpVal, volume:volLots};
 }
