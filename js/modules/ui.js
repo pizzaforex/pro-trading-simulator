@@ -1,84 +1,46 @@
-/**
- * ui.js
- * Handles DOM manipulation, UI updates, and event listeners for UI elements.
- */
-import { simState, getCurrentAssetConfig, getCurrentTimeframeSeconds } from '../state.js';
-import { CONFIG } from '../config.js';
-import * as Utils from './utils.js';
+// TEMPORARY DEBUG VERSION of initialize in ui.js
+export function initialize() {
+    console.log("DEBUG: Initializing UI elements (Detailed Check)...");
+    let allFound = true;
+    elementsToCache.forEach(id => {
+        const element = document.getElementById(id); // Cerca l'elemento
+        if (!element) {
+            // !! ERRORE !! Stampa ESATTAMENTE quale ID manca
+            console.error(`!!!!!! UI Element NOT FOUND: #${id} !!!!!!`);
+            allFound = false; // Segna che c'è stato un errore
+        } else {
+            ui[id] = element; // Memorizza solo se trovato
+            // console.log(`DEBUG: UI Element found: #${id}`); // Decommenta per vedere quelli trovati
+        }
+    });
+    // NON cercare table bodies qui per ora, semplifichiamo
+    // ui.openPositionsTableBody = ui.openPositionsTable?.getElementsByTagName('tbody')[0];
+    // ui.historyTableBody = ui.historyTable?.getElementsByTagName('tbody')[0];
+    // if (!ui.openPositionsTableBody || !ui.historyTableBody) { console.error("Table bodies missing."); allFound = false; }
 
-export const ui = {}; // Cache
+    if (!allFound) {
+         // Non mostrare l'alert, usa solo console e feedback area
+         showFeedback("Errore critico UI: Elemento/i mancante/i (vedi console).", "error");
+         console.error("UI Initialization Failed due to missing elements.");
+         return false; // Ritorna false, main.js mostrerà l'alert
+    }
 
-const elementsToCache = [ /* ... lista come prima ... */
-    'capitalDisplay', 'equityDisplay', 'totalLivePnlDisplay', 'totalClosedPnlDisplay',
-    'winRateDisplay', 'maxDrawdownDisplay', 'disciplineDisplay', 'priceDisplay', 'atrDisplay',
-    'chartContainer', 'chartInfoOverlay', 'feedback-area', 'feedback-text',
-    'assetSelect', 'timeframeSelect', 'themeToggleBtn',
-    'orderModal', 'orderModalTitle', 'closeOrderModalBtn', // Modale
-    'modalVolumeInput', 'modalCalculatedUnitsDisplay', // Input Modale
-    'modalRiskMethodPips', 'modalRiskMethodAtr', // Radio Modale
-    'modalSlPipsGroup', 'modalSlPipsInput', 'modalSlAtrGroup', 'modalSlAtrMultiInput', // SL Modale
-    'modalTpPipsGroup', 'modalTpPipsInput', 'modalTpAtrGroup', 'modalTpAtrMultiInput', // TP Modale
-    'modalEstimatedRiskDisplay', 'executeOrderBtn', 'cancelOrderBtn', // Rischio/Btn Modale
-    'triggerBtnBuy', 'triggerBtnSell', // Btn Trigger
-    'openPositionsTable', 'historyTable', 'openPositionsCount',
-    'dashboardPanel', 'equityChartContainer', 'totalTradesStat', 'profitFactorStat',
-    'clearHistoryBtn', 'downloadHistoryBtn',
-    'atrVisibleToggle', 'smaToggle'
-];
-
-// --- Funzioni definite prima ---
-function populateSelectors() { /* ... come prima ... */ }
-function updateModalInputDefaults() { /* ... come prima ... */ }
-function updateCalculatedUnits(volumeInput, displayElement) { /* ... come prima ... */ }
-function saveSettings() { /* ... come prima ... */ }
-function applyTheme(theme) { /* ... come prima ... */ }
-function updateRiskInputVisibility(selectedMethod) { /* ... come prima (quella per il modale) ... */
-   const showPips = selectedMethod === 'pips';
-   if(ui.modalSlPipsGroup) ui.modalSlPipsGroup.style.display = showPips ? 'flex' : 'none';
-   if(ui.modalTpPipsGroup) ui.modalTpPipsGroup.style.display = showPips ? 'flex' : 'none';
-   if(ui.modalSlAtrGroup) ui.modalSlAtrGroup.style.display = !showPips ? 'flex' : 'none';
-   if(ui.modalTpAtrGroup) ui.modalTpAtrGroup.style.display = !showPips ? 'flex' : 'none';
+    // Se tutti trovati, continua come prima...
+    populateSelectors();
+    applyTheme(simState.selectedTheme);
+    ui.assetSelect.value = simState.selectedAsset;
+    ui.timeframeSelect.value = simState.selectedTimeframe;
+    const riskRadio = document.querySelector(`input[name="modalRiskMethod"][value="${simState.selectedRiskMethod}"]`);
+    if (riskRadio) riskRadio.checked = true;
+    updateRiskInputVisibility(simState.selectedRiskMethod);
+    updateModalInputDefaults();
+    if (ui.atrVisibleToggle) ui.atrVisibleToggle.checked = simState.isAtrVisible;
+    if (ui.smaToggle) ui.smaToggle.checked = simState.isSmaVisible;
+    updateCalculatedUnits(ui.modalVolumeInput, ui.modalCalculatedUnitsDisplay);
+    addEventListeners();
+    updateChartInfoOverlay();
+    console.log("UI elements initialized (Debug Check Passed).");
+    return true; // Ritorna true se tutto ok
 }
-// --- Funzioni Esportate e Handler Principali ---
-export function initialize() { /* ... come prima ... */ }
-function addEventListeners() { /* ... come prima ... */ }
-// --- Gestione Modale Ordine ---
-function openOrderModal(orderType) { /* ... come prima ... */ }
-function closeOrderModal() { /* ... come prima ... */ }
-async function handleExecuteOrder() { /* ... come prima (chiama TradingModule.openPosition) ... */
-    try {
-        const TradingModule = await import('./trading.js');
-        await TradingModule.openPosition(simState.orderModalType); // Chiamata corretta
-        closeOrderModal();
-    } catch (error) { console.error("Err execute order:", error); showFeedback("Errore esecuzione ordine.", "error"); }
-}
-// --- Altri Handlers ---
-async function handleTableButtonClick(event) { /* ... come prima ... */ }
-function toggleTheme() { /* ... come prima ... */ }
-function handleSettingChangeTrigger() { /* ... come prima ... */ }
-async function handleModalRiskMethodChange(event) { /* ... come prima ... */ }
-async function handleAtrVisibilityChange(event) { /* ... come prima ... */ }
-async function handleSmaVisibilityChange(event) { /* ... come prima ... */ }
-// --- Funzioni di Aggiornamento UI ---
-export function showFeedback(message, type = 'info') { /* ... come prima ... */ }
-export function updateStatsBar() { /* ... come prima ... */ }
-export function updatePositionsTable() { /* ... come prima ... */ }
-export function updateHistoryTable() { /* ... come prima ... */ }
-export function updateLivePnlInTable(positionId, pnl) { /* ... come prima ... */ }
-export function updateTotalLivePnl(totalPnl) { /* ... come prima ... */ }
-export function updateEstimatedRisk(riskAmount, riskPercent, isModal = false) { /* ... come prima ... */ }
-export function updateDashboardDisplays(stats) { /* ... come prima ... */ }
-export function updateChartInfoOverlay() { /* ... come prima ... */ }
-export function setControlsEnabled(enabled) { /* ... come prima ... */ }
-
-/** Esporta funzione per ottenere valori dal MODALE. */
-// !! AGGIUNTO EXPORT QUI !!
-export function getModalRiskInputs() {
-   const method=document.querySelector('input[name="modalRiskMethod"]:checked')?.value||'pips';
-   let slVal=NaN, tpVal=NaN;
-   try{ if(method==='atr'){slVal=parseFloat(ui.modalSlAtrMultiInput.value); tpVal=parseFloat(ui.modalTpAtrMultiInput.value);} else {slVal=parseFloat(ui.modalSlPipsInput.value); tpVal=parseFloat(ui.modalTpPipsInput.value);}}catch(e){}
-   let volLots=NaN, sizeUnits=NaN;
-   const assetConf=getCurrentAssetConfig();
-   try{volLots=parseFloat(ui.modalVolumeInput.value); if(!isNaN(volLots)&&assetConf){sizeUnits=volLots*assetConf.lotUnitSize;}}catch(e){}
-   return {method, size:sizeUnits, slValue:slVal, tpValue:tpVal, volume:volLots};
-}
+// Mantieni il resto di ui.js com'era...
+// ... (altre funzioni: populateSelectors, updateModalInputDefaults, etc.) ...
