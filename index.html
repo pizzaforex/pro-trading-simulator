@@ -3,66 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pro Trading Simulator - Elite</title>
+    <title>Pro Trading Simulator - Stable</title> <!-- Titolo aggiornato -->
     <link rel="stylesheet" href="css/style.css">
-    <!-- Favicon -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📈</text></svg>">
 </head>
-<body class="theme-dark"> <!-- Default theme, JS applicherà quella salvata -->
+<body class="theme-dark"> <!-- Tema di default -->
 
-    <!-- Contenitore Principale Applicazione -->
+    <!-- Contenitore Principale -->
     <div class="container" id="app-container">
          <header class="main-header">
             <h1>Pro Trading Simulator</h1>
             <!-- Barra Controlli (Asset, Timeframe, Tema) -->
             <div class="controls-bar">
-                 <div class="control-group">
-                    <label for="assetSelect">Asset:</label>
-                    <select id="assetSelect" aria-label="Seleziona Asset">
-                        <!-- Options populated by JS -->
-                    </select>
-                 </div>
-                 <div class="control-group">
-                    <label for="timeframeSelect">Timeframe:</label>
-                    <select id="timeframeSelect" aria-label="Seleziona Timeframe">
-                         <!-- Options populated by JS -->
-                    </select>
-                 </div>
-                 <div class="control-group">
-                    <button id="themeToggleBtn" title="Cambia Tema Chiaro/Scuro" aria-label="Cambia tema chiaro/scuro">☀️</button>
-                 </div>
+                 <div class="control-group"><label for="assetSelect">Asset:</label><select id="assetSelect" aria-label="Seleziona Asset"></select></div>
+                 <div class="control-group"><label for="timeframeSelect">Timeframe:</label><select id="timeframeSelect" aria-label="Seleziona Timeframe"></select></div>
+                 <div class="control-group"><button id="themeToggleBtn" title="Cambia Tema" aria-label="Cambia tema chiaro/scuro">☀️</button></div>
             </div>
         </header>
 
         <!-- Barra Statistiche -->
         <div class="stats-bar" role="region" aria-label="Statistiche Principali">
-            <div class="stat-item"><span class="stat-label">Capitale</span><span class="stat-value" id="capitalDisplay">--</span></div>
-            <div class="stat-item"><span class="stat-label">Equity</span><span class="stat-value" id="equityDisplay">--</span></div>
-            <div class="stat-item"><span class="stat-label">P&L Aperto</span><span class="stat-value" id="totalLivePnlDisplay">--</span></div>
-            <div class="stat-item"><span class="stat-label">P&L Chiuso</span><span class="stat-value" id="totalClosedPnlDisplay">--</span></div>
-            <div class="stat-item"><span class="stat-label">Win Rate</span><span class="stat-value" id="winRateDisplay">--</span></div>
-            <div class="stat-item"><span class="stat-label">Max Drawdown</span><span class="stat-value" id="maxDrawdownDisplay">--</span></div>
-            <div class="stat-item"><span class="stat-label">Disciplina</span><span class="stat-value" id="disciplineDisplay">--</span></div>
-            <div class="stat-item"><span class="stat-label">Prezzo</span><span class="stat-value" id="priceDisplay">--</span></div>
+             <div class="stat-item"><span class="stat-label">Capitale</span><span class="stat-value" id="capitalDisplay">--</span></div>
+             <div class="stat-item"><span class="stat-label">Equity</span><span class="stat-value" id="equityDisplay">--</span></div>
+             <div class="stat-item"><span class="stat-label">P&L Aperto</span><span class="stat-value" id="totalLivePnlDisplay">--</span></div>
+             <div class="stat-item"><span class="stat-label">P&L Chiuso</span><span class="stat-value" id="totalClosedPnlDisplay">--</span></div>
+             <div class="stat-item"><span class="stat-label">Win Rate</span><span class="stat-value" id="winRateDisplay">--</span></div>
+             <div class="stat-item"><span class="stat-label">Max Drawdown</span><span class="stat-value" id="maxDrawdownDisplay">--</span></div>
+             <div class="stat-item"><span class="stat-label">Disciplina</span><span class="stat-value" id="disciplineDisplay">--</span></div>
+             <div class="stat-item"><span class="stat-label">Prezzo</span><span class="stat-value" id="priceDisplay">--</span></div>
              <div class="stat-item"><span class="stat-label">ATR (14)</span><span class="stat-value" id="atrDisplay">--</span></div>
         </div>
 
-        <!-- Layout Principale (Grafico + Pannello Laterale) -->
+        <!-- Layout Principale -->
         <main class="main-layout">
             <!-- Sezione Grafico -->
             <section class="chart-section panel" aria-labelledby="chart-heading">
                  <h2 id="chart-heading" class="visually-hidden">Grafico Principale</h2>
-                 <!-- Pannello Controlli Grafico -->
+                 <!-- Controlli Grafico (Toggle Indicatori) -->
                  <div class="chart-controls">
-                    <div class="indicator-control">
-                        <input type="checkbox" id="smaToggle" name="smaToggle" checked>
-                        <label for="smaToggle">SMA(20)</label>
-                    </div>
-                    <!-- Controllo Visibilità ATR -->
-                    <div class="indicator-control">
-                         <input type="checkbox" id="atrVisibleToggle" checked aria-label="Mostra o nascondi indicatore ATR">
-                         <label for="atrVisibleToggle">Mostra ATR</label>
-                    </div>
+                    <div class="indicator-control"><input type="checkbox" id="smaToggle" name="smaToggle" checked><label for="smaToggle">SMA(20)</label></div>
+                    <div class="indicator-control"><input type="checkbox" id="atrVisibleToggle" checked><label for="atrVisibleToggle">Mostra ATR</label></div>
                  </div>
                  <!-- Contenitore Grafico -->
                 <div id="chartContainer"><div id="chartInfoOverlay" class="chart-info-overlay" aria-live="polite">-- / --</div></div>
@@ -72,14 +52,27 @@
 
             <!-- Pannello Laterale -->
             <aside class="side-panel">
-                 <!-- Pannello Trigger Ordine -->
-                <section class="panel control-panel-trigger" aria-labelledby="order-trigger-heading">
-                    <h3 id="order-trigger-heading">Nuovo Ordine</h3>
-                    <p class="order-panel-description">Clicca BUY o SELL per aprire il pannello ordine.</p>
-                    <div class="button-group main-order-buttons">
-                        <button id="triggerBtnBuy" class="buy">BUY</button>
-                        <button id="triggerBtnSell" class="sell">SELL</button>
-                    </div>
+                <!-- Pannello Ordine (Versione Semplificata nel Pannello Laterale) -->
+                <section class="panel control-panel" aria-labelledby="order-heading">
+                    <h3 id="order-heading">Nuovo Ordine</h3>
+                    <!-- Metodo Rischio -->
+                    <div class="input-group risk-method-group"><label id="riskMethodLabel">Rischio:</label><div class="radio-group" role="radiogroup" aria-labelledby="riskMethodLabel"><input type="radio" id="riskMethodPips" name="riskMethod" value="pips" checked><label for="riskMethodPips">Pips</label><input type="radio" id="riskMethodAtr" name="riskMethod" value="atr"><label for="riskMethodAtr">ATR</label></div></div>
+                    <!-- Volume (Lotti) -->
+                    <div class="input-group"><label for="volumeInput">Volume (Lots):</label><input type="number" id="volumeInput" value="0.10" min="0.01" step="0.01" aria-label="Volume in Lotti"></div>
+                    <!-- Size (Unità) - Display -->
+                    <div class="input-group"><label>Size (Unità):</label><span id="calculatedUnitsDisplay" aria-live="polite">--</span></div>
+                    <!-- SL Pips -->
+                    <div class="input-group" id="slPipsGroup"><label for="slPipsInput">SL (Pips):</label><input type="number" id="slPipsInput" value="15" min="1" step="1" aria-label="Stop Loss Pips"></div>
+                    <!-- SL ATR -->
+                    <div class="input-group" id="slAtrGroup" style="display: none;"><label for="slAtrMultiInput">SL (ATR x):</label><input type="number" id="slAtrMultiInput" value="1.5" min="0.1" step="0.1" aria-label="Stop Loss ATR Multiplier"></div>
+                    <!-- TP Pips -->
+                    <div class="input-group" id="tpPipsGroup"><label for="tpPipsInput">TP (Pips):</label><input type="number" id="tpPipsInput" value="30" min="1" step="1" aria-label="Take Profit Pips"></div>
+                    <!-- TP ATR -->
+                    <div class="input-group" id="tpAtrGroup" style="display: none;"><label for="tpAtrMultiInput">TP (ATR x):</label><input type="number" id="tpAtrMultiInput" value="3.0" min="0.1" step="0.1" aria-label="Take Profit ATR Multiplier"></div>
+                    <!-- Rischio Stimato -->
+                    <div class="input-group"><label>Rischio:</label><span id="estimatedRiskDisplay" aria-live="polite">Calc...</span></div>
+                    <!-- Bottoni Buy/Sell -->
+                    <div class="button-group"><button id="btnBuy" class="buy">BUY</button><button id="btnSell" class="sell">SELL</button></div>
                 </section>
 
                 <!-- Pannello Posizioni Aperte -->
@@ -87,19 +80,13 @@
                     <h3 id="positions-heading">Posizioni Aperte (<span id="openPositionsCount">0</span>)</h3>
                     <div class="table-container">
                         <table id="openPositionsTable" aria-live="polite">
-                            <thead>
-                                <tr>
-                                    <th>ID</th><th>Orario</th><th>Tipo</th><th>Volume</th><th>Asset</th>
-                                    <th>Entrata</th><th>SL</th><th>TP</th><th>Prezzo</th><th>P&L</th>
-                                    <th></th><th></th> <!-- Modifica / Chiudi -->
-                                </tr>
-                            </thead>
-                            <tbody><tr class="no-rows-message"><td colspan="12">Nessuna posizione aperta</td></tr></tbody>
+                             <thead><tr><th>ID</th><th>Orario</th><th>Tipo</th><th>Volume</th><th>Asset</th><th>Entrata</th><th>SL</th><th>TP</th><th>Prezzo</th><th>P&L</th><th></th></tr></thead> <!-- Tolta colonna modifica -->
+                            <tbody><tr class="no-rows-message"><td colspan="11">Nessuna posizione aperta</td></tr></tbody> <!-- Colspan 11 -->
                         </table>
                     </div>
                 </section>
 
-                 <!-- Pannello Dashboard -->
+                <!-- Pannello Dashboard -->
                 <section class="panel dashboard-panel" id="dashboardPanel" aria-labelledby="dashboard-heading">
                     <h3 id="dashboard-heading">Dashboard</h3>
                     <div id="equityChartContainer" role="img" aria-label="Grafico Equity"></div>
@@ -126,58 +113,6 @@
             </aside> <!-- Fine Pannello Laterale -->
         </main> <!-- Fine Layout Principale -->
     </div> <!-- Fine Contenitore App -->
-
-    <!-- Modale Ordine (Nascosto) -->
-    <div id="orderModal" class="modal-overlay" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="orderModalTitle">
-        <div class="modal-content panel">
-            <h3 id="orderModalTitle">Nuovo Ordine</h3>
-            <button class="modal-close-btn" id="closeOrderModalBtn" aria-label="Chiudi Modale">&times;</button>
-
-            <div class="input-group risk-method-group">
-                <label id="modalRiskMethodLabel">Rischio:</label>
-                <div class="radio-group" role="radiogroup" aria-labelledby="modalRiskMethodLabel">
-                    <input type="radio" id="modalRiskMethodPips" name="modalRiskMethod" value="pips" checked>
-                    <label for="modalRiskMethodPips">Pips</label>
-                    <input type="radio" id="modalRiskMethodAtr" name="modalRiskMethod" value="atr">
-                    <label for="modalRiskMethodAtr">ATR</label>
-                </div>
-            </div>
-            <div class="input-group">
-                <label for="modalVolumeInput">Volume (Lots):</label>
-                <input type="number" id="modalVolumeInput" value="0.10" min="0.01" step="0.01" aria-label="Volume Ordine in Lotti">
-            </div>
-            <div class="input-group">
-                <label>Size (Unità):</label>
-                <span id="modalCalculatedUnitsDisplay" aria-live="polite">--</span>
-            </div>
-            <div class="input-group" id="modalSlPipsGroup">
-                <label for="modalSlPipsInput">SL (Pips):</label>
-                <input type="number" id="modalSlPipsInput" value="15" min="1" step="1" aria-label="Stop Loss Ordine in Pips">
-            </div>
-            <div class="input-group" id="modalSlAtrGroup" style="display: none;">
-                <label for="modalSlAtrMultiInput">SL (ATR x):</label>
-                <input type="number" id="modalSlAtrMultiInput" value="1.5" min="0.1" step="0.1" aria-label="Stop Loss Ordine Moltiplicatore ATR">
-            </div>
-            <div class="input-group" id="modalTpPipsGroup">
-                <label for="modalTpPipsInput">TP (Pips):</label>
-                <input type="number" id="modalTpPipsInput" value="30" min="1" step="1" aria-label="Take Profit Ordine in Pips">
-            </div>
-            <div class="input-group" id="modalTpAtrGroup" style="display: none;">
-                <label for="modalTpAtrMultiInput">TP (ATR x):</label>
-                <input type="number" id="modalTpAtrMultiInput" value="3.0" min="0.1" step="0.1" aria-label="Take Profit Ordine Moltiplicatore ATR">
-            </div>
-             <div class="input-group">
-                <label>Rischio:</label>
-                <span id="modalEstimatedRiskDisplay" aria-live="polite">Calc...</span>
-            </div>
-
-            <div class="button-group">
-                <button id="executeOrderBtn" class="">Esegui Ordine</button> <!-- Classe 'buy'/'sell' aggiunta da JS -->
-                 <button id="cancelOrderBtn" class="cancel-btn">Annulla</button>
-            </div>
-        </div>
-    </div>
-
 
     <!-- Caricamento Libreria e Moduli JS -->
     <script src="js/vendor/lightweight-charts.standalone.production.js"></script>
