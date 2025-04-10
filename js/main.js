@@ -13,7 +13,7 @@ import * as Utils from './modules/utils.js';
 // --- Initialization Functions ---
 
 /**
- * Loads user settings (theme, asset, timeframe, risk method) from localStorage.
+ * Loads user settings (theme, asset, timeframe, risk method, ATR visibility) from localStorage.
  * Applies loaded settings to the initial state.
  */
 function loadSettings() {
@@ -25,9 +25,18 @@ function loadSettings() {
         simState.selectedAsset = CONFIG.ASSETS[settings.asset] ? settings.asset : 'EURUSD';
         simState.selectedTimeframe = CONFIG.TIMEFRAMES[settings.timeframe] ? settings.timeframe : '1m';
         simState.selectedRiskMethod = ['pips', 'atr'].includes(settings.riskMethod) ? settings.riskMethod : 'pips';
-        console.log("Applied settings:", { theme: simState.selectedTheme, asset: simState.selectedAsset, timeframe: simState.selectedTimeframe, risk: simState.selectedRiskMethod });
+        // Load ATR visibility setting, default to true if not found
+        simState.isAtrVisible = typeof settings.isAtrVisible === 'boolean' ? settings.isAtrVisible : true;
+
+        console.log("Applied settings:", {
+            theme: simState.selectedTheme, asset: simState.selectedAsset,
+            timeframe: simState.selectedTimeframe, risk: simState.selectedRiskMethod,
+            atrVisible: simState.isAtrVisible // Log loaded ATR setting
+        });
     } else {
         console.log("No settings found in localStorage, using defaults.");
+        // Ensure defaults are set in simState if nothing loaded
+        simState.isAtrVisible = true;
     }
     // Apply theme to body class immediately based on loaded/default state
     document.body.className = `theme-${simState.selectedTheme}`;
@@ -39,12 +48,11 @@ function loadSettings() {
 async function initializeApp() {
     console.log("Initializing Application...");
 
-    loadSettings(); // Load settings first to apply theme and defaults
+    loadSettings(); // Load settings first
 
     // Initialize UI (critical step)
     if (!UIModule.initialize()) {
         console.error("UI Initialization Failed. Aborting.");
-        // Use alert as UI feedback might not be available
         alert("Fatal Error: Could not initialize UI elements. Please refresh or check console.");
         return;
     }
@@ -55,7 +63,6 @@ async function initializeApp() {
     // Dynamically load core modules after UI is ready
     let ChartModule, HistoryModule, DashboardModule, RiskModule, SimulationModule;
     try {
-        // Use Promise.all to load modules concurrently
         [ChartModule, HistoryModule, DashboardModule, RiskModule, SimulationModule] = await Promise.all([
             import('./modules/chart.js'),
             import('./modules/history.js'),
@@ -77,17 +84,17 @@ async function initializeApp() {
     }
     ChartModule.initializeEquityChart(); // Equity chart is optional
 
-    // Load history & initialize dashboard AFTER charts might be needed by dashboard
+    // Apply initial ATR visibility AFTER chart init
+    ChartModule.setAtrVisibility(simState.isAtrVisible);
+
+    // Load history & initialize dashboard
     HistoryModule.loadHistoryFromLocalStorage();
     DashboardModule.initializeDashboard();
 
-
     // Setup global event listeners
     window.addEventListener('resize', ChartModule.handleResize);
-    // Listen for custom event triggered by UIModule on settings change
-    // Pass the loaded modules to the handler
+    // Custom event listener for settings changes requiring reset
     window.addEventListener('settingsChanged', () => handleSettingsChange(SimulationModule, RiskModule, ChartModule, DashboardModule));
-
 
     // Set initialization complete flag
     simState.isInitialized = true;
@@ -97,7 +104,7 @@ async function initializeApp() {
     RiskModule.updateEstimatedRiskDisplay();
 
     // Start the simulation
-    SimulationModule.start(ChartModule); // Pass ChartModule needed for setInitialData
+    SimulationModule.start(ChartModule);
 
     console.log(`Application Initialized and Simulation Started for: ${simState.selectedAsset} (${simState.selectedTimeframe})`);
     // Feedback might be overwritten by Simulation start message
