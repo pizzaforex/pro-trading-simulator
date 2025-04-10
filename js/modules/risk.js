@@ -1,92 +1,89 @@
 /**
  * risk.js
- * Handles risk calculation and validation logic.
+ * Handles risk calculation and validation logic. Uses calculated units.
  */
 import { simState, getCurrentAssetConfig } from '../state.js';
 import { CONFIG } from '../config.js';
-import * as UIModule from './ui.js';
+// Importa la funzione corretta da UIModule
+import { showFeedback, updateEstimatedRisk as updateEstimatedRiskUI, getModalRiskInputs } from './ui.js'; // Importa getModalRiskInputs
 import * as Utils from './utils.js';
 
 /**
- * Calculates the potential risk amount and percentage based on inputs.
- * @param {number} size - The trade size in units.
- * @param {number} slPipsEquivalent - Stop loss distance in pips (calculated from pips or ATR).
- * @returns {{riskAmount: number, riskPercent: number}}
+ * Calculates the potential monetary risk and percentage of equity for a trade setup.
+ * @param {number} sizeUnits - The trade size in base units (calculated from lots).
+ * @param {number} slPipsEquivalent - Stop loss distance converted to pips.
+ * @returns {{riskAmount: number, riskPercent: number}} Object with risk values, or NaN if inputs invalid.
  */
-function calculateRisk(size, slPipsEquivalent) {
-    if (isNaN(size) || isNaN(slPipsEquivalent) || size <= 0 || slPipsEquivalent <= 0) {
+function calculateRisk(sizeUnits, slPipsEquivalent) {
+    if (isNaN(sizeUnits) || isNaN(slPipsEquivalent) || sizeUnits <= 0 || slPipsEquivalent <= 0) {
         return { riskAmount: NaN, riskPercent: NaN };
     }
     const assetConf = getCurrentAssetConfig();
-    const riskAmount = slPipsEquivalent * (assetConf.pipValue * size);
-    const riskPercent = simState.equity > 0 ? (riskAmount / simState.equity) * 100 : 0;
+    const riskAmount = slPipsEquivalent * (assetConf.pipValue * sizeUnits);
+    const riskPercent = simState.equity > 0 ? (riskAmount / simState.equity) * 100 : Infinity;
     return { riskAmount, riskPercent };
 }
 
 /**
- * Updates the estimated risk display in the UI based on current inputs.
+ * Updates the estimated risk display in the UI (MODAL or main panel) based on current inputs.
+ * Calculates units from volume before calculating risk.
+ * @param {boolean} isModal - True if updating the modal's display, false otherwise (optional).
  */
-export function updateEstimatedRiskDisplay() {
-    const inputs = UIModule.getCurrentRiskInputs(); // { method, size, slValue, tpValue }
+export function updateEstimatedRiskDisplay(isModal = false) { // Aggiunto parametro opzionale
+    // Usa getModalRiskInputs perché gli input sono lì ora
+    const inputs = getModalRiskInputs(); // Chiama la funzione importata
     const assetConf = getCurrentAssetConfig();
     let slPipsEquivalent = NaN;
 
+    // Validate volume/size first
+     if (isNaN(inputs.volume) || inputs.volume <= 0 || inputs.volume < assetConf.minVolume || isNaN(inputs.size)) {
+          updateEstimatedRiskUI(NaN, NaN, isModal); // Passa isModal alla funzione UI
+          return;
+     }
+
+    // Calculate SL in pips based on method
     if (inputs.method === 'atr') {
-        if (!isNaN(simState.currentATR) && simState.currentATR > 0 && !isNaN(inputs.slValue)) {
+        if (!isNaN(simState.currentATR) && simState.currentATR > 0 && !isNaN(inputs.slValue) && inputs.slValue >= CONFIG.MIN_ATR_SL_MULTIPLE) {
             const slAtrValue = simState.currentATR * inputs.slValue;
-            slPipsEquivalent = slAtrValue / assetConf.pipValue;
-        }
+            const minSlPrice = assetConf.minSlPips * assetConf.pipValue;
+            const finalSlDist = Math.max(slAtrValue, minSlPrice);
+            slPipsEquivalent = finalSlDist / assetConf.pipValue;
+        } // else remains NaN
     } else { // Pips method
-        slPipsEquivalent = inputs.slValue;
+        if (!isNaN(inputs.slValue) && inputs.slValue >= assetConf.minSlPips) {
+            slPipsEquivalent = inputs.slValue;
+        } // else remains NaN
     }
 
+    // Calculate risk using the *calculated units* (inputs.size) and SL pips
     const { riskAmount, riskPercent } = calculateRisk(inputs.size, slPipsEquivalent);
-    UIModule.updateEstimatedRisk(riskAmount, riskPercent);
+
+    // Update the UI display (pass isModal flag)
+    updateEstimatedRiskUI(riskAmount, riskPercent, isModal);
 }
 
 /**
- * Calculates and validates the risk for a potential trade.
- * @param {number} size - Trade size.
+ * Performs final risk validation just before opening a position.
+ * Uses pre-calculated SL in pips equivalent.
+ * @param {number} sizeUnits - Trade size in UNITS.
  * @param {number} slPipsEquivalent - Stop loss in pips equivalent.
- * @returns {{riskAmount: number, riskPercent: number, isValid: boolean}}
+ * @returns {{riskAmount: number, riskPercent: number, isValid: boolean}} Validation result.
  */
-export function calculateAndValidateRisk(size, slPipsEquivalent) {
-    const { riskAmount, riskPercent } = calculateRisk(size, slPipsEquivalent);
+export function calculateAndValidateRisk(sizeUnits, slPipsEquivalent) {
+    const { riskAmount, riskPercent } = calculateRisk(sizeUnits, slPipsEquivalent);
     let isValid = true;
     let message = "";
 
     if (isNaN(riskAmount) || riskAmount <= 0) {
-        message = "Rischio calcolato non valido.";
-        isValid = false;
+        message = "Rischio calcolato N/V (controlla SL/Size)."; isValid = false;
     } else if (riskPercent > CONFIG.MAX_RISK_PERCENT_PER_TRADE) {
-         message = `Rischio (${Utils.formatPercent(riskPercent)}) supera max (${CONFIG.MAX_RISK_PERCENT_PER_TRADE}%).`;
-         isValid = false;
-    } else if (riskAmount >= simState.equity) {
-         message = `Rischio (${Utils.formatCurrency(riskAmount)}) supera equity disponibile.`;
-         isValid = false;
+         message = `Rischio (${Utils.formatPercent(riskPercent)}) > Max (${CONFIG.MAX_RISK_PERCENT_PER_TRADE}% Eq).`; isValid = false;
+    } else if (simState.equity > 0 && riskAmount >= simState.equity) {
+         message = `Rischio (${Utils.formatCurrency(riskAmount)}) >= Equity (${Utils.formatCurrency(simState.equity)}).`; isValid = false;
+    } else if (simState.equity <= 0) {
+        message = "Equity non sufficiente."; isValid = false;
     }
 
-    if (!isValid) {
-        UIModule.showFeedback(message, "error");
-    }
-
+    if (!isValid) showFeedback(message, "error"); // Usa la showFeedback importata
     return { riskAmount, riskPercent, isValid };
 }
-
-// --- Kelly Criterion (Placeholder - Complex Implementation) ---
-// export function calculateKellySize(winRate, payoffRatio) {
-//     if (winRate <= 0 || winRate >= 1 || payoffRatio <= 0) {
-//         return NaN; // Invalid inputs
-//     }
-//     // Kelly fraction = W - [(1 - W) / R]
-//     // W = win rate, R = payoff ratio (Avg Win / Avg Loss)
-//     const kellyFraction = winRate - ((1 - winRate) / payoffRatio);
-//     if (kellyFraction <= 0) {
-//         return 0; // No edge or negative edge, don't trade
-//     }
-//     // This fraction needs to be applied to the *account size* and then translated
-//     // back into trade size based on the risk per unit (SL distance).
-//     // Requires careful implementation and potentially fractional sizing.
-//     console.warn("Kelly Criterion sizing not fully implemented.");
-//     return NaN; // Placeholder
-// }
