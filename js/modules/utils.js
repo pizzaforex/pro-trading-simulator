@@ -24,42 +24,26 @@ export function removeFromLocalStorage(key) { try { localStorage.removeItem(key)
 export function calculateATR(bars, period = CONFIG.ATR_PERIOD) {
     if (!Array.isArray(bars) || bars.length < period) return NaN;
     const localBars = bars; const trueRanges = [];
-    for (let i = 1; i < localBars.length; i++) {
-        const tr = Math.max(localBars[i].high - localBars[i].low, Math.abs(localBars[i].high - localBars[i - 1].close), Math.abs(localBars[i].low - localBars[i - 1].close));
-        trueRanges.push(tr);
-    }
-    if (trueRanges.length < period) return NaN;
+    for (let i = 1; i < localBars.length; i++) { const tr = Math.max(localBars[i].high - localBars[i].low, Math.abs(localBars[i].high - localBars[i - 1].close), Math.abs(localBars[i].low - localBars[i - 1].close)); trueRanges.push(tr); }
+    if (trueRanges.length < period -1 ) return NaN; // Need period-1 TRs for RMA starting from SMA
     let currentATR = 0; let initialSum = 0;
-    // Use the *last* 'period' TRs for initial SMA calculation if trueRanges is longer
+    // Use last 'period' TRs for initial SMA
     const startIdx = Math.max(0, trueRanges.length - period);
-    for (let i = startIdx; i < startIdx + period; i++) { initialSum += trueRanges[i]; }
-    currentATR = initialSum / period;
-    // Apply Wilder's smoothing only if more data points exist (correct implementation)
-    // For our rolling calculation, the SMA of the last 'period' TRs is often sufficient
-    // Let's refine using RMA from the start if enough data exists
-     if (trueRanges.length >= period) {
-        let sumTR = 0;
-        for (let i = 0; i < period; i++) sumTR += trueRanges[i];
-        currentATR = sumTR / period; // First ATR is SMA
-        // Apply RMA for remaining points
-        for (let i = period; i < trueRanges.length; i++) {
-            currentATR = ((currentATR * (period - 1)) + trueRanges[i]) / period;
-        }
-     } else { return NaN;} // Not enough TRs even for SMA
-
-    return currentATR; // The final ATR value for the last bar available
+    for (let i = startIdx; i < trueRanges.length; i++) { initialSum += trueRanges[i]; }
+    currentATR = initialSum / Math.min(period, trueRanges.length - startIdx); // Correct avg count
+    // Apply Wilder's smoothing if enough data (more robust calculation)
+    if (trueRanges.length >= period) {
+        let sumTR = 0; for(let i=0; i<period; i++) sumTR += trueRanges[i];
+        currentATR = sumTR / period;
+        for(let i=period; i<trueRanges.length; i++) currentATR = ((currentATR * (period - 1)) + trueRanges[i]) / period;
+    } else { return NaN; } // Should not happen if initial check passed, but safe
+    return currentATR;
 }
 
-/** Calculates Simple Moving Average (SMA) of closing prices (NUOVO). */
+/** Calculates Simple Moving Average (SMA) of closing prices. */
 export function calculateSMA(bars, period = CONFIG.SMA_PERIOD) {
-    if (!Array.isArray(bars) || bars.length < period) {
-        return NaN; // Not enough data for the period
-    }
-    // Sum the closing prices of the last 'period' bars
-    let sum = 0;
-    const startIndex = bars.length - period; // Index of the first bar in the period
-    for (let i = startIndex; i < bars.length; i++) {
-        sum += bars[i].close;
-    }
-    return sum / period; // Return the average
+    if (!Array.isArray(bars) || bars.length < period) return NaN;
+    let sum = 0; const startIndex = bars.length - period;
+    for (let i = startIndex; i < bars.length; i++) { sum += bars[i].close; }
+    return sum / period;
 }
