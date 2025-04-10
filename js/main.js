@@ -97,7 +97,7 @@ async function initializeApp() {
     RiskModule.updateEstimatedRiskDisplay();
 
     // Start the simulation
-    SimulationModule.start();
+    SimulationModule.start(ChartModule); // Pass ChartModule needed for setInitialData
 
     console.log(`Application Initialized and Simulation Started for: ${simState.selectedAsset} (${simState.selectedTimeframe})`);
     // Feedback might be overwritten by Simulation start message
@@ -127,10 +127,10 @@ async function handleSettingsChange(SimulationModule, RiskModule, ChartModule, D
     // Use setTimeout to allow UI feedback to render briefly before potentially blocking reset/start operations
     setTimeout(() => {
        try {
-           SimulationModule.resetSimulation(ChartModule, DashboardModule); // Pass needed modules to reset
+           SimulationModule.resetSimulation(ChartModule, DashboardModule); // Pass modules needed by reset
            // Update risk display *after* reset but *before* start generates initial bars/ATR
            RiskModule.updateEstimatedRiskDisplay();
-           SimulationModule.start(ChartModule); // Pass ChartModule if needed by start's initial data setting
+           SimulationModule.start(ChartModule); // Pass ChartModule needed by start
            // Feedback will be updated by SimulationModule.start()
        } catch (error) {
             console.error("Error during simulation reset/start:", error);
