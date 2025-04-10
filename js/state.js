@@ -11,54 +11,47 @@ export const simState = {
     discipline: CONFIG.INITIAL_DISCIPLINE,
     isRunning: false,
     isInitialized: false,
-    lastBar: null, // Holds the latest generated OHLC bar { time, open, high, low, close }
-    lastBars: [], // Rolling window of recent bars for ATR calculation
-    currentATR: NaN, // The latest calculated ATR value (in price units, not pips)
+    lastBar: null,
+    lastBars: [], // Rolling window for ATR
+    currentATR: NaN,
 
     // Trading State
-    openPositions: [], // Array of active Position objects
-    closedTrades: [], // Array of completed TradeHistory objects (loaded from localStorage)
-    nextPositionId: 1, // Counter for unique position IDs, updated after loading history
-    tradeLines: {}, // Map of chart price lines associated with open positions { posId: { entryLine, slLine, tpLine } }
+    openPositions: [],
+    closedTrades: [], // Loaded from localStorage if available
+    nextPositionId: 1, // Updated after loading history
+    tradeLines: {},
 
     // Performance State
-    equityHistory: [{ time: Math.floor(Date.now() / 1000), value: CONFIG.INITIAL_CAPITAL }], // History for equity chart
-    peakEquity: CONFIG.INITIAL_CAPITAL, // Tracks the highest equity reached
-    maxDrawdownPercent: 0, // Maximum drawdown experienced, as a percentage
-    totalClosedPnl: 0, // Sum of P&L from all closed trades
-    winCount: 0, // Number of winning trades
-    lossCount: 0, // Number of losing trades (P&L < 0)
-    totalGain: 0, // Sum of all positive P&L
-    totalLoss: 0, // Sum of absolute values of all negative P&L
+    equityHistory: [{ time: Math.floor(Date.now() / 1000), value: CONFIG.INITIAL_CAPITAL }],
+    peakEquity: CONFIG.INITIAL_CAPITAL,
+    maxDrawdownPercent: 0,
+    totalClosedPnl: 0,
+    winCount: 0,
+    lossCount: 0,
+    totalGain: 0,
+    totalLoss: 0,
 
     // Settings State (Reflects user choices, loaded/saved)
-    selectedAsset: 'EURUSD', // Default asset on load
-    selectedTimeframe: '1m', // Default timeframe on load
-    selectedTheme: 'dark', // Default theme ('dark' or 'light')
-    selectedRiskMethod: 'pips', // Default risk calculation ('pips' or 'atr')
+    selectedAsset: 'EURUSD',
+    selectedTimeframe: '1m',
+    selectedTheme: 'dark',
+    selectedRiskMethod: 'pips',
+    isAtrVisible: true, // NUOVO: Stato per visibilità ATR (default true)
 
-    // Charting State (References to chart instances and series)
+    // Charting State
     charts: { main: null, equity: null },
     series: { candles: null, equityCurve: null, atr: null },
 
     // Simulation Control
-    tickIntervalId: null, // ID for the setInterval driving the simulation
+    tickIntervalId: null,
 };
 
 // --- Utility function to get current asset config ---
-/**
- * Returns the configuration object for the currently selected asset.
- * @returns {object} Asset configuration from CONFIG.ASSETS.
- */
 export function getCurrentAssetConfig() {
-    return CONFIG.ASSETS[simState.selectedAsset] || CONFIG.ASSETS['EURUSD']; // Fallback to EURUSD if selection is invalid
+    return CONFIG.ASSETS[simState.selectedAsset] || CONFIG.ASSETS['EURUSD']; // Fallback
 }
 
 // --- Utility function to get timeframe seconds ---
-/**
- * Returns the duration in seconds for the currently selected timeframe.
- * @returns {number} Timeframe duration in seconds.
- */
 export function getCurrentTimeframeSeconds() {
-    return CONFIG.TIMEFRAMES[simState.selectedTimeframe]?.seconds || 60; // Fallback to 1 minute (60 seconds)
+    return CONFIG.TIMEFRAMES[simState.selectedTimeframe]?.seconds || 60; // Fallback to 1 min
 }
