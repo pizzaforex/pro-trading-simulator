@@ -1,153 +1,137 @@
-{\rtf1\ansi\ansicpg1252\cocoartf2822
-\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
-{\colortbl;\red255\green255\blue255;}
-{\*\expandedcolortbl;;}
-\paperw11900\paperh16840\margl1440\margr1440\vieww11520\viewh8400\viewkind0
-\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pro Trading Simulator - Terminal</title>
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📈</text></svg>">
 
-\f0\fs24 \cf0 <!DOCTYPE html>\
-<html lang="it">\
-<head>\
-    <meta charset="UTF-8">\
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">\
-    <title>Pro Trading Simulator - Terminal</title>\
-    <link rel="stylesheet" href="css/style.css">\
-    <!-- Favicon -->\
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>\uc0\u55357 \u56520 </text></svg>">\
-\
-    <!-- Rilevamento Supporto Moduli ES6 -->\
-    <script>\
-        document.documentElement.style.visibility = 'hidden'; // Nasconde tutto all'inizio\
-        try \{ new Function('import("")'); window.supportsModules = true; \}\
-        catch (e) \{ window.supportsModules = false; \}\
-    </script>\
-     <style> /* Stile per messaggio fallback */\
-        .no-module-support \{ display: none; padding: 30px; text-align: center; background-color: #1e222d; color: #d1d4dc; border: 1px solid #363a45; border-radius: 8px; margin: 50px auto; max-width: 600px; font-family: sans-serif; \}\
-        .no-module-support h2 \{ color: #ef5350; \}\
-    </style>\
-</head>\
-<body class="theme-dark"> <!-- Tema di default -->\
-\
-     <!-- Messaggio Fallback per Browser non Supportati -->\
-     <div id="no-module-fallback" class="no-module-support">\
-        <h2>Browser non Supportato</h2>\
-        <p>Il tuo browser non supporta funzionalit\'e0 JavaScript moderne (ES Modules) richieste da questo simulatore.</p>\
-        <p>Per favore, aggiorna il tuo browser a una versione recente (Chrome, Firefox, Edge, Safari) o utilizza un browser diverso.</p>\
-    </div>\
-\
-    <!-- Contenitore Principale Applicazione -->\
-    <div class="container" id="app-container" style="display: none;">\
-         <header class="main-header">\
-            <h1>Pro Trading Simulator</h1>\
-            <!-- Barra Controlli (Asset, Timeframe, Tema) -->\
-            <div class="controls-bar">\
-                 <div class="control-group">\
-                    <label for="assetSelect">Asset:</label>\
-                    <select id="assetSelect" aria-label="Seleziona Asset"></select>\
-                 </div>\
-                 <div class="control-group">\
-                    <label for="timeframeSelect">Timeframe:</label>\
-                    <select id="timeframeSelect" aria-label="Seleziona Timeframe"></select>\
-                 </div>\
-                 <div class="control-group">\
-                    <button id="themeToggleBtn" title="Cambia Tema Chiaro/Scuro" aria-label="Cambia tema chiaro/scuro">\uc0\u9728 \u65039 </button>\
-                 </div>\
-            </div>\
-        </header>\
-\
-        <!-- Barra Statistiche -->\
-        <div class="stats-bar" role="region" aria-label="Statistiche Principali">\
-            <div class="stat-item"><span class="stat-label">Capitale</span><span class="stat-value" id="capitalDisplay">--</span></div>\
-            <div class="stat-item"><span class="stat-label">Equity</span><span class="stat-value" id="equityDisplay">--</span></div>\
-            <div class="stat-item"><span class="stat-label">P&L Aperto</span><span class="stat-value" id="totalLivePnlDisplay">--</span></div>\
-            <div class="stat-item"><span class="stat-label">P&L Chiuso</span><span class="stat-value" id="totalClosedPnlDisplay">--</span></div>\
-            <div class="stat-item"><span class="stat-label">Win Rate</span><span class="stat-value" id="winRateDisplay">--</span></div>\
-            <div class="stat-item"><span class="stat-label">Max Drawdown</span><span class="stat-value" id="maxDrawdownDisplay">--</span></div>\
-            <div class="stat-item"><span class="stat-label">Disciplina</span><span class="stat-value" id="disciplineDisplay">--</span></div>\
-            <div class="stat-item"><span class="stat-label">Prezzo</span><span class="stat-value" id="priceDisplay">--</span></div>\
-             <div class="stat-item"><span class="stat-label">ATR (14)</span><span class="stat-value" id="atrDisplay">--</span></div>\
-        </div>\
-\
-        <!-- Layout Principale (Grafico + Pannello Laterale) -->\
-        <main class="main-layout">\
-            <!-- Sezione Grafico -->\
-            <section class="chart-section panel" aria-labelledby="chart-heading">\
-                 <h2 id="chart-heading" class="visually-hidden">Grafico Principale</h2>\
-                <div id="chartContainer"><div id="chartInfoOverlay" class="chart-info-overlay" aria-live="polite">-- / --</div></div>\
-                <!-- Area Feedback -->\
-                <div class="feedback-area" id="feedback-area" role="log" aria-live="polite"><span id="feedback-text">Inizializzazione...</span></div>\
-            </section>\
-\
-            <!-- Pannello Laterale -->\
-            <aside class="side-panel">\
-                <!-- Pannello Controlli Ordine -->\
-                <section class="panel control-panel" aria-labelledby="order-heading">\
-                    <h3 id="order-heading">Nuovo Ordine</h3>\
-                     <div class="input-group risk-method-group">\
-                         <span class="label-like">Rischio:</span>\
-                         <div class="radio-group">\
-                            <input type="radio" id="riskMethodPips" name="riskMethod" value="pips" checked> <label for="riskMethodPips">Pips</label>\
-                            <input type="radio" id="riskMethodAtr" name="riskMethod" value="atr"> <label for="riskMethodAtr">ATR</label>\
-                         </div>\
-                     </div>\
-                    <div class="input-group"><label for="sizeInput">Size:</label><input type="number" id="sizeInput" value="10000" min="1000" step="1000" aria-label="Size Operazione"></div>\
-                    <div class="input-group" id="slPipsGroup"><label for="slPipsInput">SL (Pips):</label><input type="number" id="slPipsInput" value="15" min="1" step="1" aria-label="Stop Loss Pips"></div>\
-                    <div class="input-group" id="slAtrGroup" style="display: none;"><label for="slAtrMultiInput">SL (ATR x):</label><input type="number" id="slAtrMultiInput" value="1.5" min="0.1" step="0.1" aria-label="Moltiplicatore ATR Stop Loss"></div>\
-                    <div class="input-group" id="tpPipsGroup"><label for="tpPipsInput">TP (Pips):</label><input type="number" id="tpPipsInput" value="30" min="1" step="1" aria-label="Take Profit Pips"></div>\
-                    <div class="input-group" id="tpAtrGroup" style="display: none;"><label for="tpAtrMultiInput">TP (ATR x):</label><input type="number" id="tpAtrMultiInput" value="3.0" min="0.1" step="0.1" aria-label="Moltiplicatore ATR Take Profit"></div>\
-                    <div class="input-group"><label>Rischio:</label><span id="estimatedRiskDisplay" aria-live="polite">Calc...</span></div>\
-                    <div class="button-group"><button id="btnBuy" class="buy">BUY</button><button id="btnSell" class="sell">SELL</button></div>\
-                </section>\
-\
-                <!-- Pannello Posizioni Aperte -->\
-                <section class="panel positions-panel" aria-labelledby="positions-heading">\
-                    <h3 id="positions-heading">Posizioni Aperte (<span id="openPositionsCount">0</span>)</h3>\
-                    <div class="table-container">\
-                        <table id="openPositionsTable" aria-live="polite">\
-                            <thead><tr><th>ID</th><th>Tipo</th><th>Size</th><th>Entrata</th><th>SL</th><th>TP</th><th>P&L</th><th></th></tr></thead>\
-                            <tbody><tr class="no-rows-message"><td colspan="8">Nessuna posizione aperta</td></tr></tbody>\
-                        </table>\
-                    </div>\
-                </section>\
-\
-                <!-- Pannello Dashboard -->\
-                <section class="panel dashboard-panel" id="dashboardPanel" aria-labelledby="dashboard-heading">\
-                    <h3 id="dashboard-heading">Dashboard</h3>\
-                    <div id="equityChartContainer" role="img" aria-label="Grafico Equity"></div>\
-                    <div class="dashboard-stats">\
-                        <div class="dashboard-stat"><span class="stat-label">Trades</span><span class="stat-value" id="totalTradesStat">0</span></div>\
-                        <div class="dashboard-stat"><span class="stat-label">Profit Factor</span><span class="stat-value" id="profitFactorStat">N/A</span></div>\
-                    </div>\
-                </section>\
-\
-                <!-- Pannello Storico -->\
-                <section class="panel history-panel" aria-labelledby="history-heading">\
-                    <h3 id="history-heading">Storico</h3>\
-                    <div class="table-container">\
-                        <table id="historyTable">\
-                            <thead><tr><th>ID</th><th>Tipo</th><th>Size</th><th>Entrata</th><th>Uscita</th><th>P&L</th><th>Chiusura</th></tr></thead>\
-                            <tbody><tr class="no-rows-message"><td colspan="7">Nessuna operazione chiusa</td></tr></tbody>\
-                        </table>\
-                    </div>\
-                     <button id="clearHistoryBtn" class="clear-btn" title="Cancella Storico Operazioni">Cancella Storico</button>\
-                </section>\
-            </aside>\
-        </main>\
-    </div>\
-\
-    <!-- Caricamento Libreria e Moduli JS -->\
-    <script src="js/vendor/lightweight-charts.standalone.production.js"></script>\
-    <script type="module" src="js/main.js"></script> <!-- Entry Point -->\
-\
-    <!-- Script Finale per Visualizzazione -->\
-    <script>\
-        if (window.supportsModules) \{\
-             document.getElementById('app-container').style.display = 'block';\
-             document.documentElement.style.visibility = 'visible';\
-        \} else \{\
-            document.getElementById('no-module-fallback').style.display = 'block';\
-             document.documentElement.style.visibility = 'visible';\
-        \}\
-    </script>\
-</body>\
-</html>}
+    <!-- Nessuno script di rilevamento qui -->
+    <!-- Nessuno stile CSS per fallback qui -->
+
+</head>
+<body class="theme-dark"> <!-- Default theme -->
+
+    <!-- Messaggio Fallback RIMOSSO -->
+    <!-- <div id="no-module-fallback" class="no-module-support"> ... </div> -->
+
+    <!-- Contenitore Principale Applicazione - Ora visibile di default -->
+    <div class="container" id="app-container">
+         <header class="main-header">
+            <h1>Pro Trading Simulator</h1>
+            <!-- Barra Controlli (Asset, Timeframe, Tema) -->
+            <div class="controls-bar">
+                 <div class="control-group">
+                    <label for="assetSelect">Asset:</label>
+                    <select id="assetSelect" aria-label="Seleziona Asset">
+                        <!-- Options populated by JS -->
+                    </select>
+                 </div>
+                 <div class="control-group">
+                    <label for="timeframeSelect">Timeframe:</label>
+                    <select id="timeframeSelect" aria-label="Seleziona Timeframe">
+                         <!-- Options populated by JS -->
+                    </select>
+                 </div>
+                 <div class="control-group">
+                    <button id="themeToggleBtn" title="Cambia Tema Chiaro/Scuro" aria-label="Cambia tema chiaro/scuro">☀️</button>
+                 </div>
+            </div>
+        </header>
+
+        <!-- Barra Statistiche -->
+        <div class="stats-bar" role="region" aria-label="Statistiche Principali">
+            <div class="stat-item"><span class="stat-label">Capitale</span><span class="stat-value" id="capitalDisplay">--</span></div>
+            <div class="stat-item"><span class="stat-label">Equity</span><span class="stat-value" id="equityDisplay">--</span></div>
+            <div class="stat-item"><span class="stat-label">P&L Aperto</span><span class="stat-value" id="totalLivePnlDisplay">--</span></div>
+            <div class="stat-item"><span class="stat-label">P&L Chiuso</span><span class="stat-value" id="totalClosedPnlDisplay">--</span></div>
+            <div class="stat-item"><span class="stat-label">Win Rate</span><span class="stat-value" id="winRateDisplay">--</span></div>
+            <div class="stat-item"><span class="stat-label">Max Drawdown</span><span class="stat-value" id="maxDrawdownDisplay">--</span></div>
+            <div class="stat-item"><span class="stat-label">Disciplina</span><span class="stat-value" id="disciplineDisplay">--</span></div>
+            <div class="stat-item"><span class="stat-label">Prezzo</span><span class="stat-value" id="priceDisplay">--</span></div>
+             <div class="stat-item"><span class="stat-label">ATR (14)</span><span class="stat-value" id="atrDisplay">--</span></div>
+        </div>
+
+        <!-- Layout Principale (Grafico + Pannello Laterale) -->
+        <main class="main-layout">
+            <!-- Sezione Grafico -->
+            <section class="chart-section panel" aria-labelledby="chart-heading">
+                 <h2 id="chart-heading" class="visually-hidden">Grafico Principale</h2>
+                <div id="chartContainer">
+                    <div id="chartInfoOverlay" class="chart-info-overlay" aria-live="polite">-- / --</div>
+                </div>
+                <!-- Area Feedback -->
+                <div class="feedback-area" id="feedback-area" role="log" aria-live="polite">
+                    <span id="feedback-text">Inizializzazione...</span>
+                </div>
+            </section>
+
+            <!-- Pannello Laterale -->
+            <aside class="side-panel">
+                <!-- Pannello Controlli Ordine -->
+                <section class="panel control-panel" aria-labelledby="order-heading">
+                    <h3 id="order-heading">Nuovo Ordine</h3>
+                     <div class="input-group risk-method-group">
+                         <span class="label-like">Rischio:</span>
+                         <div class="radio-group">
+                            <input type="radio" id="riskMethodPips" name="riskMethod" value="pips" checked> <label for="riskMethodPips">Pips</label>
+                            <input type="radio" id="riskMethodAtr" name="riskMethod" value="atr"> <label for="riskMethodAtr">ATR</label>
+                         </div>
+                     </div>
+                    <div class="input-group"><label for="sizeInput">Size:</label><input type="number" id="sizeInput" value="10000" min="1000" step="1000" aria-label="Size Operazione"></div>
+                    <div class="input-group" id="slPipsGroup"><label for="slPipsInput">SL (Pips):</label><input type="number" id="slPipsInput" value="15" min="1" step="1" aria-label="Stop Loss Pips"></div>
+                    <div class="input-group" id="slAtrGroup" style="display: none;"><label for="slAtrMultiInput">SL (ATR x):</label><input type="number" id="slAtrMultiInput" value="1.5" min="0.1" step="0.1" aria-label="Moltiplicatore ATR Stop Loss"></div>
+                    <div class="input-group" id="tpPipsGroup"><label for="tpPipsInput">TP (Pips):</label><input type="number" id="tpPipsInput" value="30" min="1" step="1" aria-label="Take Profit Pips"></div>
+                    <div class="input-group" id="tpAtrGroup" style="display: none;"><label for="tpAtrMultiInput">TP (ATR x):</label><input type="number" id="tpAtrMultiInput" value="3.0" min="0.1" step="0.1" aria-label="Moltiplicatore ATR Take Profit"></div>
+                    <div class="input-group"><label>Rischio:</label><span id="estimatedRiskDisplay" aria-live="polite">Calc...</span></div>
+                    <div class="button-group"><button id="btnBuy" class="buy">BUY</button><button id="btnSell" class="sell">SELL</button></div>
+                </section>
+
+                <!-- Pannello Posizioni Aperte -->
+                <section class="panel positions-panel" aria-labelledby="positions-heading">
+                    <h3 id="positions-heading">Posizioni Aperte (<span id="openPositionsCount">0</span>)</h3>
+                    <div class="table-container">
+                        <table id="openPositionsTable" aria-live="polite">
+                            <thead><tr><th>ID</th><th>Tipo</th><th>Size</th><th>Entrata</th><th>SL</th><th>TP</th><th>P&L</th><th></th></tr></thead>
+                            <tbody><tr class="no-rows-message"><td colspan="8">Nessuna posizione aperta</td></tr></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Pannello Dashboard -->
+                <section class="panel dashboard-panel" id="dashboardPanel" aria-labelledby="dashboard-heading">
+                    <h3 id="dashboard-heading">Dashboard</h3>
+                    <div id="equityChartContainer" role="img" aria-label="Grafico Equity"></div>
+                    <div class="dashboard-stats">
+                        <div class="dashboard-stat"><span class="stat-label">Trades</span><span class="stat-value" id="totalTradesStat">0</span></div>
+                        <div class="dashboard-stat"><span class="stat-label">Profit Factor</span><span class="stat-value" id="profitFactorStat">N/A</span></div>
+                    </div>
+                </section>
+
+                <!-- Pannello Storico -->
+                <section class="panel history-panel" aria-labelledby="history-heading">
+                    <h3 id="history-heading">Storico</h3>
+                    <div class="table-container">
+                        <table id="historyTable">
+                            <thead><tr><th>ID</th><th>Tipo</th><th>Size</th><th>Entrata</th><th>Uscita</th><th>P&L</th><th>Chiusura</th></tr></thead>
+                            <tbody><tr class="no-rows-message"><td colspan="7">Nessuna operazione chiusa</td></tr></tbody>
+                        </table>
+                    </div>
+                     <button id="clearHistoryBtn" class="clear-btn" title="Cancella Storico Operazioni">Cancella Storico</button>
+                </section>
+            </aside> <!-- Fine Pannello Laterale -->
+        </main> <!-- Fine Layout Principale -->
+    </div> <!-- Fine Contenitore App -->
+
+    <!-- Caricamento Libreria e Moduli JS -->
+    <!-- Assicurati che il percorso sia corretto rispetto a index.html -->
+    <script src="js/vendor/lightweight-charts.standalone.production.js"></script>
+    <script type="module" src="js/main.js"></script> <!-- Entry Point -->
+
+    <!-- Script Finale per Visualizzazione Fallback/App RIMOSSO -->
+    <!-- Lo script che mostra/nasconde non serve più -->
+
+</body>
+</html>
