@@ -1,152 +1,84 @@
 /**
  * main.js
  * Application entry point and module orchestrator.
- * Handles initialization, global event listeners, and coordination between modules.
  */
 import { simState, getCurrentAssetConfig } from './state.js';
 import { CONFIG } from './config.js';
-// Import UI module early as it's needed for feedback and elements cache
 import * as UIModule from './modules/ui.js';
-// Import other modules dynamically later or as needed
 import * as Utils from './modules/utils.js';
 
-// --- Initialization Functions ---
-
-/**
- * Loads user settings (theme, asset, timeframe, risk method, ATR visibility) from localStorage.
- * Applies loaded settings to the initial state.
- */
+/** Loads settings from localStorage. */
 function loadSettings() {
     const settings = Utils.loadFromLocalStorage(CONFIG.LOCALSTORAGE_SETTINGS_KEY);
     if (settings) {
-        console.log("Loading settings from localStorage:", settings);
-        // Apply settings to state, validating against config where necessary
+        console.log("Loading settings:", settings);
         simState.selectedTheme = ['dark', 'light'].includes(settings.theme) ? settings.theme : 'dark';
         simState.selectedAsset = CONFIG.ASSETS[settings.asset] ? settings.asset : 'EURUSD';
         simState.selectedTimeframe = CONFIG.TIMEFRAMES[settings.timeframe] ? settings.timeframe : '1m';
         simState.selectedRiskMethod = ['pips', 'atr'].includes(settings.riskMethod) ? settings.riskMethod : 'pips';
-        // Load ATR visibility setting, default to true if not found
         simState.isAtrVisible = typeof settings.isAtrVisible === 'boolean' ? settings.isAtrVisible : true;
-
-        console.log("Applied settings:", {
-            theme: simState.selectedTheme, asset: simState.selectedAsset,
-            timeframe: simState.selectedTimeframe, risk: simState.selectedRiskMethod,
-            atrVisible: simState.isAtrVisible // Log loaded ATR setting
-        });
+        simState.isSmaVisible = typeof settings.isSmaVisible === 'boolean' ? settings.isSmaVisible : true; // Carica visibilità SMA
+        console.log("Applied settings:", { /* ... log ... */ atrVisible: simState.isAtrVisible, smaVisible: simState.isSmaVisible });
     } else {
-        console.log("No settings found in localStorage, using defaults.");
-        // Ensure defaults are set in simState if nothing loaded
-        simState.isAtrVisible = true;
+        console.log("No settings found, using defaults.");
+        simState.isAtrVisible = true; // Assicura default
+        simState.isSmaVisible = true; // Assicura default
     }
-    // Apply theme to body class immediately based on loaded/default state
     document.body.className = `theme-${simState.selectedTheme}`;
 }
 
-/**
- * Initializes the entire application: UI, Charts, History, Dashboard, Simulation.
- */
+/** Initializes the entire application. */
 async function initializeApp() {
     console.log("Initializing Application...");
+    loadSettings();
 
-    loadSettings(); // Load settings first
+    if (!UIModule.initialize()) { alert("Fatal Error: UI Init Failed."); return; }
+    UIModule.showFeedback("Caricamento moduli...", "info");
 
-    // Initialize UI (critical step)
-    if (!UIModule.initialize()) {
-        console.error("UI Initialization Failed. Aborting.");
-        alert("Fatal Error: Could not initialize UI elements. Please refresh or check console.");
-        return;
-    }
-
-    // Show loading state
-    UIModule.showFeedback("Caricamento moduli e grafici...", "info");
-
-    // Dynamically load core modules after UI is ready
     let ChartModule, HistoryModule, DashboardModule, RiskModule, SimulationModule;
     try {
         [ChartModule, HistoryModule, DashboardModule, RiskModule, SimulationModule] = await Promise.all([
-            import('./modules/chart.js'),
-            import('./modules/history.js'),
-            import('./modules/dashboard.js'),
-            import('./modules/risk.js'),
+            import('./modules/chart.js'), import('./modules/history.js'),
+            import('./modules/dashboard.js'), import('./modules/risk.js'),
             import('./modules/simulation.js')
         ]);
-    } catch (error) {
-        console.error("Failed to load core modules:", error);
-        UIModule.showFeedback("Errore caricamento moduli principali. Ricarica la pagina.", "error");
-        return; // Stop initialization
-    }
+        window.APP = { ChartModule, HistoryModule, DashboardModule, RiskModule, SimulationModule, UIModule, Utils, simState, CONFIG };
+    } catch (error) { console.error("Failed to load modules:", error); UIModule.showFeedback("Errore caricamento moduli.", "error"); return; }
 
-    // Initialize charts (Main chart is critical)
-    let mainChartOk = ChartModule.initializeMainChart();
-    if (!mainChartOk) {
-        UIModule.showFeedback("Errore fatale: Impossibile creare grafico principale.", "error");
-        return;
-    }
-    ChartModule.initializeEquityChart(); // Equity chart is optional
-
-    // Apply initial ATR visibility AFTER chart init
+    if (!ChartModule.initializeMainChart()) { UIModule.showFeedback("Errore grafico principale.", "error"); return; }
+    ChartModule.initializeEquityChart();
     ChartModule.setAtrVisibility(simState.isAtrVisible);
+    ChartModule.setSmaVisibility(simState.isSmaVisible); // Applica visibilità SMA iniziale
 
-    // Load history & initialize dashboard
     HistoryModule.loadHistoryFromLocalStorage();
     DashboardModule.initializeDashboard();
 
-    // Setup global event listeners
     window.addEventListener('resize', ChartModule.handleResize);
-    // Custom event listener for settings changes requiring reset
     window.addEventListener('settingsChanged', () => handleSettingsChange(SimulationModule, RiskModule, ChartModule, DashboardModule));
 
-    // Set initialization complete flag
     simState.isInitialized = true;
-
-    // Update displays based on loaded/initial state
     UIModule.updateStatsBar();
-    RiskModule.updateEstimatedRiskDisplay();
+    RiskModule.updateEstimatedRiskDisplay(); // Ora chiamato da UIModule.updateCalculatedUnits inizialmente
 
-    // Start the simulation
-    SimulationModule.start(ChartModule);
+    SimulationModule.start(ChartModule); // Pass ChartModule
 
-    console.log(`Application Initialized and Simulation Started for: ${simState.selectedAsset} (${simState.selectedTimeframe})`);
-    // Feedback might be overwritten by Simulation start message
+    console.log(`App Initialized & Sim Started: ${simState.selectedAsset} (${simState.selectedTimeframe})`);
 }
 
-// --- Event Handlers ---
-
-/**
- * Handles changes in Asset or Timeframe selection, triggering a simulation reset.
- * @param {object} SimulationModule - Dynamically imported Simulation module.
- * @param {object} RiskModule - Dynamically imported Risk module.
- * @param {object} ChartModule - Dynamically imported Chart module.
- * @param {object} DashboardModule - Dynamically imported Dashboard module.
- */
+/** Handles Asset/Timeframe changes, triggers simulation reset. */
 async function handleSettingsChange(SimulationModule, RiskModule, ChartModule, DashboardModule) {
-    // State (selectedAsset, selectedTimeframe) is already updated by UI module's event handler
-
-    console.log(`Settings change detected: Asset=${simState.selectedAsset}, Timeframe=${simState.selectedTimeframe}. Resetting simulation.`);
-
-    UIModule.showFeedback(`Cambio Asset/Timeframe a ${simState.selectedAsset}/${simState.selectedTimeframe}. Reset e riavvio...`, 'info');
-
-    // Update UI elements immediately reflecting the change
+    console.log(`Settings change -> Asset=${simState.selectedAsset}, TF=${simState.selectedTimeframe}. Resetting...`);
+    UIModule.showFeedback(`Cambio Asset/Timeframe. Reset...`, 'info');
     UIModule.updateChartInfoOverlay();
 
-
-    // Reset and restart the simulation
-    // Use setTimeout to allow UI feedback to render briefly before potentially blocking reset/start operations
     setTimeout(() => {
        try {
-           SimulationModule.resetSimulation(ChartModule, DashboardModule); // Pass modules needed by reset
-           // Update risk display *after* reset but *before* start generates initial bars/ATR
-           RiskModule.updateEstimatedRiskDisplay();
-           SimulationModule.start(ChartModule); // Pass ChartModule needed by start
-           // Feedback will be updated by SimulationModule.start()
-       } catch (error) {
-            console.error("Error during simulation reset/start:", error);
-            UIModule.showFeedback("Errore durante il reset della simulazione.", "error");
-       }
-    }, 150); // Short delay
+           SimulationModule.resetSimulation(ChartModule, DashboardModule);
+           RiskModule.updateEstimatedRiskDisplay(); // Aggiorna rischio per nuovi default/ATR
+           SimulationModule.start(ChartModule);
+       } catch (error) { console.error("Error reset/start:", error); UIModule.showFeedback("Errore reset simulazione.", "error"); }
+    }, 150);
 }
 
-
-// --- Start Application ---
-// Use DOMContentLoaded to ensure the DOM is ready before trying to access UI elements
+// Start App
 document.addEventListener('DOMContentLoaded', initializeApp);
