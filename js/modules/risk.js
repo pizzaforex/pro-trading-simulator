@@ -5,7 +5,7 @@
 import { simState, getCurrentAssetConfig } from '../state.js';
 import { CONFIG } from '../config.js';
 // Importa la funzione corretta da UIModule
-import { showFeedback, updateEstimatedRisk as updateEstimatedRiskUI, getModalRiskInputs } from './ui.js'; // Importa getModalRiskInputs
+import { showFeedback, updateEstimatedRisk as updateEstimatedRiskUI, getCurrentRiskInputs } from './ui.js'; // Importa getCurrentRiskInputs
 import * as Utils from './utils.js';
 
 /**
@@ -25,19 +25,18 @@ function calculateRisk(sizeUnits, slPipsEquivalent) {
 }
 
 /**
- * Updates the estimated risk display in the UI (MODAL or main panel) based on current inputs.
+ * Updates the estimated risk display in the UI based on current inputs from the side panel.
  * Calculates units from volume before calculating risk.
- * @param {boolean} isModal - True if updating the modal's display, false otherwise (optional).
  */
-export function updateEstimatedRiskDisplay(isModal = false) { // Aggiunto parametro opzionale
-    // Usa getModalRiskInputs perché gli input sono lì ora
-    const inputs = getModalRiskInputs(); // Chiama la funzione importata
+export function updateEstimatedRiskDisplay() { // Rimosso parametro isModal
+    // Usa getCurrentRiskInputs perché legge dal pannello laterale
+    const inputs = getCurrentRiskInputs();
     const assetConf = getCurrentAssetConfig();
     let slPipsEquivalent = NaN;
 
     // Validate volume/size first
      if (isNaN(inputs.volume) || inputs.volume <= 0 || inputs.volume < assetConf.minVolume || isNaN(inputs.size)) {
-          updateEstimatedRiskUI(NaN, NaN, isModal); // Passa isModal alla funzione UI
+          updateEstimatedRiskUI(NaN, NaN); // Chiama funzione UI senza isModal
           return;
      }
 
@@ -58,13 +57,12 @@ export function updateEstimatedRiskDisplay(isModal = false) { // Aggiunto parame
     // Calculate risk using the *calculated units* (inputs.size) and SL pips
     const { riskAmount, riskPercent } = calculateRisk(inputs.size, slPipsEquivalent);
 
-    // Update the UI display (pass isModal flag)
-    updateEstimatedRiskUI(riskAmount, riskPercent, isModal);
+    // Update the UI display (without isModal flag)
+    updateEstimatedRiskUI(riskAmount, riskPercent);
 }
 
 /**
  * Performs final risk validation just before opening a position.
- * Uses pre-calculated SL in pips equivalent.
  * @param {number} sizeUnits - Trade size in UNITS.
  * @param {number} slPipsEquivalent - Stop loss in pips equivalent.
  * @returns {{riskAmount: number, riskPercent: number, isValid: boolean}} Validation result.
@@ -74,15 +72,10 @@ export function calculateAndValidateRisk(sizeUnits, slPipsEquivalent) {
     let isValid = true;
     let message = "";
 
-    if (isNaN(riskAmount) || riskAmount <= 0) {
-        message = "Rischio calcolato N/V (controlla SL/Size)."; isValid = false;
-    } else if (riskPercent > CONFIG.MAX_RISK_PERCENT_PER_TRADE) {
-         message = `Rischio (${Utils.formatPercent(riskPercent)}) > Max (${CONFIG.MAX_RISK_PERCENT_PER_TRADE}% Eq).`; isValid = false;
-    } else if (simState.equity > 0 && riskAmount >= simState.equity) {
-         message = `Rischio (${Utils.formatCurrency(riskAmount)}) >= Equity (${Utils.formatCurrency(simState.equity)}).`; isValid = false;
-    } else if (simState.equity <= 0) {
-        message = "Equity non sufficiente."; isValid = false;
-    }
+    if (isNaN(riskAmount) || riskAmount <= 0) { message = "Rischio N/V."; isValid = false; }
+    else if (riskPercent > CONFIG.MAX_RISK_PERCENT_PER_TRADE) { message = `Rischio (${Utils.formatPercent(riskPercent)}) > Max (${CONFIG.MAX_RISK_PERCENT_PER_TRADE}% Eq).`; isValid = false; }
+    else if (simState.equity > 0 && riskAmount >= simState.equity) { message = `Rischio (${Utils.formatCurrency(riskAmount)}) >= Equity (${Utils.formatCurrency(simState.equity)}).`; isValid = false; }
+    else if (simState.equity <= 0) { message = "Equity non sufficiente."; isValid = false; }
 
     if (!isValid) showFeedback(message, "error"); // Usa la showFeedback importata
     return { riskAmount, riskPercent, isValid };
