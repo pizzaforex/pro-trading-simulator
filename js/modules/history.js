@@ -1,85 +1,183 @@
 /**
  * history.js
  * Manages the log of closed trades and interacts with localStorage.
- * Includes CSV download functionality. Versione Stabile.
  */
-import { simState, getCurrentAssetConfig } from '../state.js';
+import { simState } from '../state.js';
 import { CONFIG } from '../config.js';
 import * as UIModule from './ui.js';
 import * as Utils from './utils.js';
+// Dynamically import DashboardModule only when clearing history requires resetting its chart
+// import * as DashboardModule from './dashboard.js';
 
 /**
- * Logs a completed trade (full or partial) to the state array `simState.closedTrades`.
- * @param {Position} closedPosition - The original position object *before* modification/removal.
- * @param {number} exitPrice - The price of execution for this closure.
- * @param {number} exitTime - The timestamp of the closure.
- * @param {'manual'|'sl'|'tp'} reason - The reason for closing.
- * @param {number} pnl - The P&L calculated for the *closed portion*.
- * @param {boolean} isPartial - Flag indicating if it was a partial close.
- * @param {number} closedSizeUnits - The actual size in units that was closed.
+ * Logs a completed trade to the state array `simState.closedTrades`.
+ * Triggers saving to localStorage and updates the history table UI.
+ * @param {Position} closedPosition - The position object that was closed.
+ * @param {number} exitPrice - The price at which the position was closed.
+ * @param {number} exitTime - The timestamp (seconds) of the closure.
+ * @param {'manual'|'sl'|'tp'} reason - The reason for closing the position.
+ * @param {number} pnl - The final calculated profit or loss in currency.
  */
-export function logClosedTrade(closedPosition, exitPrice, exitTime, reason, pnl, isPartial, closedSizeUnits) {
-     // Logga l'operazione (parziale o totale) con la size effettivamente chiusa
+export function logClosedTrade(closedPosition, exitPrice, exitTime, reason, pnl) {
+     // Create a record object with all relevant details
      const tradeRecord = {
-        id: closedPosition.id, // Usa ID originale anche per chiusure parziali
-        asset: closedPosition.asset,
+        id: closedPosition.id,
+        asset: closedPosition.asset, // Store the asset traded
         type: closedPosition.type,
-        size: closedSizeUnits, // Logga la size CHIUSA in questa operazione
+        size: closedPosition.size,
         entryPrice: closedPosition.entryPrice,
         exitPrice: exitPrice,
-        stopLoss: closedPosition.stopLoss,   // SL/TP originali al momento della chiusura
-        takeProfit: closedPosition.takeProfit,
-        pnl: pnl, // P&L di questa specifica chiusura
+        stopLoss: closedPosition.stopLoss,   // Store initial SL
+        takeProfit: closedPosition.takeProfit, // Store initial TP
+        pnl: pnl,
         entryTime: closedPosition.entryTime,
         exitTime: exitTime,
-        closeReason: `${reason}${isPartial ? '-PARTIAL' : ''}` // Aggiunge suffisso se parziale
-        // Rimuovi isPartial separato se incluso in closeReason
+        closeReason: reason
     };
+
+    // Add the new record to the end of the state array
     simState.closedTrades.push(tradeRecord);
-    saveHistoryToLocalStorage(); // Salva lo storico aggiornato
-    UIModule.updateHistoryTable(); // Aggiorna la tabella UI
+
+    // Save the updated (and potentially limited) history to localStorage
+    saveHistoryToLocalStorage();
+
+    // Update the visual history table in the UI
+    UIModule.updateHistoryTable();
 }
 
-/** Saves limited history to localStorage. */
-export function saveHistoryToLocalStorage() { /* ... codice come prima ... */ }
-/** Loads history from localStorage. */
-export function loadHistoryFromLocalStorage() { /* ... codice come prima ... */ }
-/** Clears trade history and resets related stats. */
-export async function clearHistory() { /* ... codice come prima ... */ }
-/** Recalculates performance counters from history. */
-function recalculatePerformanceFromHistory() { /* ... codice come prima ... */ }
-/** Generates and triggers CSV download. */
-export function downloadHistoryCSV() { // Aggiornato per logica size/volume
-    if (simState.closedTrades.length === 0) { return UIModule.showFeedback("Nessuno storico da scaricare.", "info"); }
-    console.log("Generating CSV history download...");
-    // Intestazioni più chiare
-    const headers = ["TradeID", "Asset", "Tipo", "Volume_Chiuso(Lots)", "Size_Chiusa(Units)", "Orario_Entrata", "Orario_Uscita", "Prezzo_Entrata", "Prezzo_Uscita", "SL_Iniziale", "TP_Iniziale", "P&L($)", "Motivo_Chiusura"];
-    const csvRows = [headers.join(',')];
+/**
+ * Saves the current trade history (limited by MAX_HISTORY_ITEMS_STORAGE) to localStorage.
+ * Uses error handling provided by Utils.saveToLocalStorage.
+ */
+export function saveHistoryToLocalStorage() {
+    try {
+        // Get the last N trades to prevent excessive storage usage
+        const historyToSave = simState.closedTrades.slice(-CONFIG.MAX_HISTORY_ITEMS_STORAGE);
+        Utils.saveToLocalStorage(CONFIG.LOCALSTORAGE_HISTORY_KEY, historyToSave);
+    } catch (error) {
+        // Error is logged and feedback shown by the utility function
+        console.error("Error during saveHistoryToLocalStorage wrapper:", error);
+    }
+}
 
+/**
+ * Loads trade history from localStorage into the application state (`simState.closedTrades`).
+ * Recalculates performance metrics based on the loaded history.
+ * Updates the next position ID counter.
+ */
+export function loadHistoryFromLocalStorage() {
+    const loadedHistory = Utils.loadFromLocalStorage(CONFIG.LOCALSTORAGE_HISTORY_KEY);
+
+    if (Array.isArray(loadedHistory)) {
+        // Assign loaded data to state
+        simState.closedTrades = loadedHistory;
+        console.log(`Loaded ${loadedHistory.length} trades from localStorage.`);
+
+        // Update the next position ID to avoid collisions
+        if (loadedHistory.length > 0) {
+            // Find the maximum ID used in the loaded history and add 1
+            const maxId = loadedHistory.reduce((max, trade) => Math.max(max, trade.id || 0), 0);
+            simState.nextPositionId = maxId + 1;
+        } else {
+            simState.nextPositionId = 1; // Reset to 1 if history is empty
+        }
+
+        // Recalculate performance counters (wins, losses, P&L sums) from loaded data
+        recalculatePerformanceFromHistory();
+
+    } else {
+        // If nothing loaded or data is invalid, ensure state has an empty array
+        simState.closedTrades = [];
+        simState.nextPositionId = 1; // Start IDs from 1
+        console.log("No valid trade history found in localStorage or history is empty.");
+    }
+    // Update the history table UI regardless of whether data was loaded
+    UIModule.updateHistoryTable();
+}
+
+/**
+ * Clears the trade history from both the application state and localStorage.
+ * Also resets related performance metrics and the equity chart.
+ * Prompts the user for confirmation before proceeding.
+ */
+export async function clearHistory() {
+    // Confirmation dialog
+    if (!window.confirm("ATTENZIONE!\nSei sicuro di voler cancellare TUTTO lo storico delle operazioni?\n\nL'equity, le statistiche e il grafico equity verranno resettati al capitale iniziale.\nQuesta azione NON può essere annullata.")) {
+        return; // User cancelled
+    }
+
+    console.log("Clearing trade history and resetting performance stats...");
+
+    // --- Reset State Variables ---
+    simState.closedTrades = [];
+    simState.winCount = 0;
+    simState.lossCount = 0;
+    simState.totalGain = 0;
+    simState.totalLoss = 0;
+    simState.totalClosedPnl = 0;
+    simState.nextPositionId = 1; // Reset ID counter
+
+    // Reset performance metrics that depend directly on history
+    simState.equity = simState.capital; // Reset equity back to starting capital
+    simState.peakEquity = simState.capital;
+    simState.maxDrawdownPercent = 0;
+    // Reset equity history for the chart
+    simState.equityHistory = [{ time: Math.floor(Date.now() / 1000), value: simState.capital }];
+
+
+    // --- Clear Storage ---
+    Utils.removeFromLocalStorage(CONFIG.LOCALSTORAGE_HISTORY_KEY);
+
+    // --- Update UI ---
+    UIModule.updateHistoryTable(); // Clear the history table display
+    UIModule.updateStatsBar();    // Update stats bar (Closed PnL, Equity etc.)
+
+    // Update Dashboard (needs dynamic import)
+    try {
+        const DashboardModule = await import('./dashboard.js');
+        DashboardModule.updateDashboardStats(); // Reset displayed stats (Win Rate, PF etc.)
+        DashboardModule.resetEquityChart();   // Reset equity chart display to initial point
+    } catch (error) {
+        console.error("Error updating dashboard after clearing history:", error);
+    }
+
+    UIModule.showFeedback("Storico operazioni cancellato. Statistiche e grafico equity resettati.", "ok");
+}
+
+
+/**
+ * Recalculates performance counters (wins, losses, total P&L, gain/loss sums)
+ * based on the trades currently in `simState.closedTrades`.
+ * Usually called after loading history from storage.
+ */
+function recalculatePerformanceFromHistory() {
+    // Reset counters before recalculating
+    simState.winCount = 0;
+    simState.lossCount = 0;
+    simState.totalGain = 0;
+    simState.totalLoss = 0;
+    simState.totalClosedPnl = 0;
+    // Don't reset nextPositionId here, it's handled in loadHistory...
+
+    // Iterate through the loaded history
     simState.closedTrades.forEach(trade => {
-        const assetConf = CONFIG.ASSETS[trade.asset] || getCurrentAssetConfig();
-        // Il volume in lots si riferisce alla size chiusa in questo record
-        const volumeLotsClosed = trade.size / assetConf.lotUnitSize;
-        const entryDT = new Date(trade.entryTime * 1000).toLocaleString('it-IT', {dateStyle:'short', timeStyle:'medium'});
-        const exitDT = new Date(trade.exitTime * 1000).toLocaleString('it-IT', {dateStyle:'short', timeStyle:'medium'});
+        // Ensure pnl is a number, default to 0 if undefined/null/NaN
+        const pnl = Number(trade.pnl) || 0;
+        simState.totalClosedPnl += pnl;
 
-        const row = [
-            trade.id, trade.asset, trade.type,
-            Utils.formatVolume(volumeLotsClosed, trade.asset), // Volume Chiuso
-            trade.size, // Size Unità Chiusa
-            entryDT, exitDT,
-            Utils.formatPrice(trade.entryPrice, trade.asset), Utils.formatPrice(trade.exitPrice, trade.asset),
-            Utils.formatPrice(trade.stopLoss, trade.asset), Utils.formatPrice(trade.takeProfit, trade.asset),
-            trade.pnl.toFixed(2),
-            trade.closeReason.toUpperCase() // Include '-PARTIAL' se presente
-        ];
-        csvRows.push(row.map(field => `"${String(field ?? '').replace(/"/g, '""')}"`).join(','));
+        if (pnl > 0) {
+            simState.winCount++;
+            simState.totalGain += pnl;
+        } else if (pnl < 0) {
+            simState.lossCount++;
+            simState.totalLoss += Math.abs(pnl); // Store total loss as positive
+        }
+        // Breakeven trades (pnl === 0) correctly contribute to totalClosedPnl but not wins/losses/gains/losses
     });
 
-    const csvString = csvRows.join('\r\n');
-    try { // Logica download invariata
-        const blob = new Blob(["\uFEFF" + csvString], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement("a");
-        if (link.download !== undefined) { const url = URL.createObjectURL(blob); link.setAttribute("href", url); const ts = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-'); link.setAttribute("download", `trading_history_${ts}.csv`); link.style.visibility='hidden'; document.body.appendChild(link); link.click(); document.body.removeChild(link); URL.revokeObjectURL(url); UIModule.showFeedback("Download CSV avviato.", "ok"); }
-        else { UIModule.showFeedback("Download non supportato.", "warn"); }
-    } catch (e) { console.error("Err download CSV:", e); UIModule.showFeedback("Errore download CSV.", "error"); }
+    // Note: This function ONLY recalculates counters based on CLOSED trades.
+    // It does NOT reconstruct the equity curve or peak/drawdown history perfectly.
+    console.log("Performance counters recalculated from trade history.", {
+        wins: simState.winCount, losses: simState.lossCount, totalPnl: simState.totalClosedPnl
+    });
 }

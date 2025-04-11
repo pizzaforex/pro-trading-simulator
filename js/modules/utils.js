@@ -6,44 +6,149 @@ import { CONFIG } from '../config.js';
 import { simState, getCurrentAssetConfig } from '../state.js';
 
 // --- Formatting ---
-export function formatCurrency(value) { return `$${(Number(value) || 0).toFixed(2)}`; }
-export function formatPrice(value, assetId = simState.selectedAsset) { const conf = CONFIG.ASSETS[assetId] || CONFIG.ASSETS['EURUSD']; return (Number(value) || 0).toFixed(conf.pricePrecision); }
-export function formatPercent(value) { return `${(Number(value) || 0).toFixed(2)}%`; }
-export function formatVolume(value, assetId = simState.selectedAsset) { const conf = CONFIG.ASSETS[assetId] || CONFIG.ASSETS['EURUSD']; return (Number(value) || 0).toLocaleString(undefined, { minimumFractionDigits: conf.volumePrecision, maximumFractionDigits: conf.volumePrecision }); }
-export function formatPips(valueInPrice, assetId = simState.selectedAsset) { const conf = CONFIG.ASSETS[assetId] || CONFIG.ASSETS['EURUSD']; if (!conf.pipValue || conf.pipValue === 0) return 'N/A'; const pips = (Number(valueInPrice) || 0) / conf.pipValue; return pips.toFixed(1); }
-export function formatTimestamp(timestamp) { if (!timestamp || isNaN(timestamp)) return '--'; try { const d = new Date(timestamp * 1000); return d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }); } catch (e) { console.error("Err format timestamp:", e); return '--'; } }
 
-// --- localStorage ---
-export function saveToLocalStorage(key, data) { try { localStorage.setItem(key, JSON.stringify(data)); return true; } catch (e) { console.error(`Err save LS (${key}):`, e.name, e.message); if (e.name === 'QuotaExceededError'||e.name==='NS_ERROR_DOM_QUOTA_REACHED') { import('./ui.js').then(UI => UI.showFeedback("Spazio archiviazione esaurito.", "error")); } return false; } }
-export function loadFromLocalStorage(key) { try { const d = localStorage.getItem(key); return d ? JSON.parse(d) : null; } catch (e) { console.error(`Err load LS (${key}):`, e); return null; } }
-export function removeFromLocalStorage(key) { try { localStorage.removeItem(key); console.log(`Removed LS: ${key}`); return true; } catch (e) { console.error(`Err remove LS (${key}):`, e); return false; } }
+/** Formats a number as currency (e.g., $10,000.00). */
+export function formatCurrency(value) {
+    return `$${(Number(value) || 0).toFixed(2)}`;
+}
+
+/** Formats a price value according to the selected asset's precision. */
+export function formatPrice(value, assetId = simState.selectedAsset) {
+    const assetConf = CONFIG.ASSETS[assetId] || CONFIG.ASSETS['EURUSD'];
+    return (Number(value) || 0).toFixed(assetConf.pricePrecision);
+}
+
+/** Formats a number as a percentage string (e.g., 1.23%). */
+export function formatPercent(value) {
+    return `${(Number(value) || 0).toFixed(2)}%`;
+}
+
+/** Formats a volume/size value according to the selected asset's precision. */
+export function formatVolume(value, assetId = simState.selectedAsset) {
+     const assetConf = CONFIG.ASSETS[assetId] || CONFIG.ASSETS['EURUSD'];
+     return (Number(value) || 0).toLocaleString(undefined, { // Use locale for potential separators
+         minimumFractionDigits: assetConf.volumePrecision,
+         maximumFractionDigits: assetConf.volumePrecision
+     });
+}
+
+/** Formats a price difference into pips based on the asset's pip value. */
+export function formatPips(valueInPrice, assetId = simState.selectedAsset) {
+     const assetConf = CONFIG.ASSETS[assetId] || CONFIG.ASSETS['EURUSD'];
+     if (!assetConf.pipValue || assetConf.pipValue === 0) return 'N/A';
+     const pips = (Number(valueInPrice) || 0) / assetConf.pipValue;
+     return pips.toFixed(1); // Usually display pips with 1 decimal
+}
+
+/** Formats a Unix timestamp (seconds) into HH:MM:SS string. */
+export function formatTimestamp(timestamp) {
+    if (!timestamp || isNaN(timestamp)) return '--';
+    try {
+        const date = new Date(timestamp * 1000);
+         if (typeof Intl !== 'undefined' && typeof Intl.DateTimeFormat !== 'undefined') {
+            return new Intl.DateTimeFormat('it-IT', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(date);
+        } else {
+            return date.toLocaleTimeString('it-IT'); // Fallback
+        }
+    } catch (e) { console.error("Error formatting timestamp:", e); return '--'; }
+}
+
+// --- localStorage Interaction ---
+
+/** Saves data to localStorage, handling potential errors. */
+export function saveToLocalStorage(key, data) {
+    try {
+        localStorage.setItem(key, JSON.stringify(data));
+        // console.log(`Data saved to localStorage under key: ${key}`); // Reduce console noise
+        return true;
+    } catch (error) {
+        console.error(`Error saving to localStorage (${key}):`, error.name, error.message);
+        if (error.name === 'QuotaExceededError' || error.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+             // Use dynamic import to avoid circular dependency if UIModule uses Utils
+             import('./ui.js').then(UIModule => {
+                 UIModule.showFeedback("Spazio archiviazione locale esaurito.", "error");
+             }).catch(e => console.error("Failed to load UIModule for feedback", e));
+        }
+        return false;
+    }
+}
+
+/** Loads data from localStorage, handling potential errors. */
+export function loadFromLocalStorage(key) {
+    try {
+        const data = localStorage.getItem(key);
+        return data ? JSON.parse(data) : null;
+    } catch (error) {
+        console.error(`Error loading from localStorage (${key}):`, error);
+        return null;
+    }
+}
+
+/** Removes data from localStorage. */
+export function removeFromLocalStorage(key) {
+     try {
+        localStorage.removeItem(key);
+        console.log(`Data removed from localStorage for key: ${key}`);
+        return true;
+    } catch (error) {
+        console.error(`Error removing from localStorage (${key}):`, error);
+        return false;
+    }
+}
+
 
 // --- Calculations ---
 
-/** Calculates Average True Range (ATR). */
+/**
+ * Calculates the Average True Range (ATR) using Wilder's smoothing method (RMA).
+ * @param {Array<OHLCBar>} bars - Array of OHLC bars, MUST be sorted oldest to newest. Needs at least `period` bars.
+ * @param {number} period - The ATR period (e.g., 14).
+ * @returns {number} The calculated ATR value for the *last* bar, or NaN if not enough data.
+ */
 export function calculateATR(bars, period = CONFIG.ATR_PERIOD) {
-    if (!Array.isArray(bars) || bars.length < period) return NaN;
-    const localBars = bars; const trueRanges = [];
-    for (let i = 1; i < localBars.length; i++) { const tr = Math.max(localBars[i].high - localBars[i].low, Math.abs(localBars[i].high - localBars[i - 1].close), Math.abs(localBars[i].low - localBars[i - 1].close)); trueRanges.push(tr); }
-    if (trueRanges.length < period -1 ) return NaN; // Need period-1 TRs for RMA starting from SMA
-    let currentATR = 0; let initialSum = 0;
-    // Use last 'period' TRs for initial SMA
-    const startIdx = Math.max(0, trueRanges.length - period);
-    for (let i = startIdx; i < trueRanges.length; i++) { initialSum += trueRanges[i]; }
-    currentATR = initialSum / Math.min(period, trueRanges.length - startIdx); // Correct avg count
-    // Apply Wilder's smoothing if enough data (more robust calculation)
-    if (trueRanges.length >= period) {
-        let sumTR = 0; for(let i=0; i<period; i++) sumTR += trueRanges[i];
-        currentATR = sumTR / period;
-        for(let i=period; i<trueRanges.length; i++) currentATR = ((currentATR * (period - 1)) + trueRanges[i]) / period;
-    } else { return NaN; } // Should not happen if initial check passed, but safe
-    return currentATR;
-}
+    if (!Array.isArray(bars) || bars.length < period) { return NaN; }
 
-/** Calculates Simple Moving Average (SMA) of closing prices. */
-export function calculateSMA(bars, period = CONFIG.SMA_PERIOD) {
-    if (!Array.isArray(bars) || bars.length < period) return NaN;
-    let sum = 0; const startIndex = bars.length - period;
-    for (let i = startIndex; i < bars.length; i++) { sum += bars[i].close; }
-    return sum / period;
+    const trueRanges = [];
+    // Calculate TR for bars starting from the second bar
+    for (let i = 1; i < bars.length; i++) {
+        const high = bars[i].high;
+        const low = bars[i].low;
+        const prevClose = bars[i - 1].close;
+        const tr = Math.max(high - low, Math.abs(high - prevClose), Math.abs(low - prevClose));
+        trueRanges.push(tr);
+    }
+
+    // Need at least 'period' TR values for the calculation
+    if (trueRanges.length < period -1 ) { return NaN; } // Corrected condition: need period-1 TRs after the initial bar
+
+     // Calculate the ATR using Recursive Moving Average (Wilder's Smoothing)
+     // We need to calculate it iteratively from the start of the required TR data.
+     // Start index in trueRanges array to get 'period' values ending at the latest TR
+     const relevantTRs = trueRanges.slice(-(period)); // Get the last 'period' TRs
+
+     if (relevantTRs.length < period) return NaN; // Double check
+
+     // Calculate the first ATR (SMA of the first 'period' relevant TRs)
+     let currentATR = relevantTRs.reduce((sum, val) => sum + val, 0) / period;
+
+     // For the very last ATR value based on Wilder's smoothing:
+     // The standard calculation is iterative. If we only have the 'bars' array ending now,
+     // we need the *previous* ATR to calculate the current one.
+     // A common approximation for the *current* ATR without full history is using an EMA or the SMA calculated above.
+     // Let's stick to the RMA approach assuming enough history in `bars`.
+
+     // Refined RMA calculation:
+     let atrSum = 0;
+     // Initial SMA for the first 'period' TRs
+     for (let i = 0; i < period; i++) {
+         atrSum += trueRanges[i];
+     }
+     currentATR = atrSum / period;
+
+     // Smooth for subsequent TRs
+     for (let i = period; i < trueRanges.length; i++) {
+         currentATR = ((currentATR * (period - 1)) + trueRanges[i]) / period;
+     }
+
+    return currentATR; // Return the final calculated ATR
 }

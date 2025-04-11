@@ -31,12 +31,12 @@ export const simState = {
     totalGain: 0,
     totalLoss: 0,
 
-    // Settings State (Reflects user choices, loaded/saved)
+    // Settings State
     selectedAsset: 'EURUSD',
     selectedTimeframe: '1m',
     selectedTheme: 'dark',
     selectedRiskMethod: 'pips',
-    isAtrVisible: true, // NUOVO: Stato per visibilità ATR (default true)
+    isAtrVisible: true, // Added: State for ATR visibility
 
     // Charting State
     charts: { main: null, equity: null },

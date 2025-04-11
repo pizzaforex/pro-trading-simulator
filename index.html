@@ -7,9 +7,8 @@
     <link rel="stylesheet" href="css/style.css">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📈</text></svg>">
 </head>
-<body class="theme-dark"> <!-- Default theme, JS applicherà quella salvata -->
+<body class="theme-dark">
 
-    <!-- Contenitore Principale Applicazione -->
     <div class="container" id="app-container">
          <header class="main-header">
             <h1>Pro Trading Simulator</h1>
@@ -50,38 +49,26 @@
             <aside class="side-panel">
                 <section class="panel control-panel" aria-labelledby="order-heading">
                     <h3 id="order-heading">Nuovo Ordine</h3>
-                     <!-- Gruppo Rischio -->
                      <div class="input-group risk-method-group">
-                         <label id="riskMethodLabel">Rischio:</label> <!-- Usa label standard -->
+                         <label id="riskMethodLabel">Rischio:</label>
                          <div class="radio-group" role="radiogroup" aria-labelledby="riskMethodLabel">
-                            <input type="radio" id="riskMethodPips" name="riskMethod" value="pips" checked>
-                            <label for="riskMethodPips">Pips</label> <!-- Label associata con 'for' -->
-                            <input type="radio" id="riskMethodAtr" name="riskMethod" value="atr">
-                            <label for="riskMethodAtr">ATR</label> <!-- Label associata con 'for' -->
+                            <input type="radio" id="riskMethodPips" name="riskMethod" value="pips" checked><label for="riskMethodPips">Pips</label>
+                            <input type="radio" id="riskMethodAtr" name="riskMethod" value="atr"><label for="riskMethodAtr">ATR</label>
                          </div>
                      </div>
-                     <!-- Gruppo Size -->
                     <div class="input-group"><label for="sizeInput">Size:</label><input type="number" id="sizeInput" value="10000" min="1000" step="1000" aria-label="Size Operazione"></div>
-                    <!-- Gruppo SL Pips -->
                     <div class="input-group" id="slPipsGroup"><label for="slPipsInput">SL (Pips):</label><input type="number" id="slPipsInput" value="15" min="1" step="1" aria-label="Stop Loss Pips"></div>
-                    <!-- Gruppo SL ATR -->
                     <div class="input-group" id="slAtrGroup" style="display: none;"><label for="slAtrMultiInput">SL (ATR x):</label><input type="number" id="slAtrMultiInput" value="1.5" min="0.1" step="0.1" aria-label="Moltiplicatore ATR Stop Loss"></div>
-                     <!-- Gruppo TP Pips -->
                     <div class="input-group" id="tpPipsGroup"><label for="tpPipsInput">TP (Pips):</label><input type="number" id="tpPipsInput" value="30" min="1" step="1" aria-label="Take Profit Pips"></div>
-                     <!-- Gruppo TP ATR -->
                     <div class="input-group" id="tpAtrGroup" style="display: none;"><label for="tpAtrMultiInput">TP (ATR x):</label><input type="number" id="tpAtrMultiInput" value="3.0" min="0.1" step="0.1" aria-label="Moltiplicatore ATR Take Profit"></div>
-                    <!-- Gruppo Rischio Stimato -->
                     <div class="input-group"><label>Rischio:</label><span id="estimatedRiskDisplay" aria-live="polite">Calc...</span></div>
-                    <!-- Gruppo Toggle ATR (NUOVO) -->
                     <div class="input-group atr-toggle-group">
                         <label for="atrVisibleToggle">Mostra ATR Grafico:</label>
                         <input type="checkbox" id="atrVisibleToggle" checked aria-label="Mostra o nascondi indicatore ATR">
                     </div>
-                    <!-- Gruppo Bottoni -->
                     <div class="button-group"><button id="btnBuy" class="buy">BUY</button><button id="btnSell" class="sell">SELL</button></div>
                 </section>
 
-                 <!-- Pannello Posizioni Aperte -->
                 <section class="panel positions-panel" aria-labelledby="positions-heading">
                     <h3 id="positions-heading">Posizioni Aperte (<span id="openPositionsCount">0</span>)</h3>
                     <div class="table-container">
@@ -92,7 +79,6 @@
                     </div>
                 </section>
 
-                <!-- Pannello Dashboard -->
                 <section class="panel dashboard-panel" id="dashboardPanel" aria-labelledby="dashboard-heading">
                     <h3 id="dashboard-heading">Dashboard</h3>
                     <div id="equityChartContainer" role="img" aria-label="Grafico Equity"></div>
@@ -102,7 +88,6 @@
                     </div>
                 </section>
 
-                 <!-- Pannello Storico -->
                 <section class="panel history-panel" aria-labelledby="history-heading">
                     <h3 id="history-heading">Storico</h3>
                     <div class="table-container">

@@ -31,12 +31,12 @@ function loadSettings() {
         console.log("Applied settings:", {
             theme: simState.selectedTheme, asset: simState.selectedAsset,
             timeframe: simState.selectedTimeframe, risk: simState.selectedRiskMethod,
-            atrVisible: simState.isAtrVisible // Log loaded ATR setting
+            atrVisible: simState.isAtrVisible
         });
     } else {
         console.log("No settings found in localStorage, using defaults.");
         // Ensure defaults are set in simState if nothing loaded
-        simState.isAtrVisible = true;
+        simState.isAtrVisible = true; // Set default if no settings
     }
     // Apply theme to body class immediately based on loaded/default state
     document.body.className = `theme-${simState.selectedTheme}`;
@@ -85,16 +85,18 @@ async function initializeApp() {
     ChartModule.initializeEquityChart(); // Equity chart is optional
 
     // Apply initial ATR visibility AFTER chart init
-    ChartModule.setAtrVisibility(simState.isAtrVisible);
+    ChartModule.setAtrVisibility(simState.isAtrVisible); // <--- Set initial visibility
 
     // Load history & initialize dashboard
     HistoryModule.loadHistoryFromLocalStorage();
     DashboardModule.initializeDashboard();
 
+
     // Setup global event listeners
     window.addEventListener('resize', ChartModule.handleResize);
     // Custom event listener for settings changes requiring reset
     window.addEventListener('settingsChanged', () => handleSettingsChange(SimulationModule, RiskModule, ChartModule, DashboardModule));
+
 
     // Set initialization complete flag
     simState.isInitialized = true;
